@@ -179,7 +179,7 @@ class RealVideoPipeline:
 
             # Designed YouTube thumbnail from the cover scene. Best-effort (like
             # images/alignment): a failure must not fail a rendered video.
-            if self._settings.thumbnail_enabled:
+            if self._settings.thumbnail_enabled and job.orientation == "horizontal":
                 try:
                     step = await self._step(job_id, PipelineStep.THUMBNAIL)
                     await thumbnail.generate_thumbnail(
