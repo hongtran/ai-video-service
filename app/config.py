@@ -22,7 +22,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("LANGFUSE_HOST", "LANGFUSE_BASE_URL"),
     )
 
-    llm_model: str = "gpt-4o"
+    llm_model: str = "gpt-4o-mini"
     # Narration + scene split run warm enough to write well, cool enough to
     # obey the verbatim-captions rule. At OpenAI's default (1.0) the model
     # paraphrases and silently drops clauses, which alignment then rejects.
@@ -35,9 +35,9 @@ class Settings(BaseSettings):
     # The IMAGE_GEN step calls this model with each scene's imagePrompt and embeds
     # the result as a data URI. images_enabled=false skips generation entirely
     # (frames keep their placeholder), so the pipeline runs image-API-free.
-    image_model: str = "gpt-image-2"
+    image_model: str = "gpt-image-1"
     images_enabled: bool = True
-    image_quality: str = "high"  # gpt-image-1: low | medium | high
+    image_quality: str = "medium"  # gpt-image-1: low | medium | high
     image_size_vertical: str = "1024x1536"   # portrait, for 9:16 videos
     image_size_horizontal: str = "1536x1024"  # landscape, for 16:9 videos
     # Cost/latency guard: at most this many images generated per video; extra
