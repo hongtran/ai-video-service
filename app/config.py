@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     # The IMAGE_GEN step calls this model with each scene's imagePrompt and embeds
     # the result as a data URI. images_enabled=false skips generation entirely
     # (frames keep their placeholder), so the pipeline runs image-API-free.
-    image_model: str = "gpt-image-1"
+    image_model: str = "gpt-image-2"
     images_enabled: bool = True
     image_quality: str = "medium"  # gpt-image-1: low | medium | high
     image_size_vertical: str = "1024x1536"   # portrait, for 9:16 videos
