@@ -11,18 +11,24 @@ export const PIPELINE_STEPS = [
   'authoring',
   'image_gen',
   'alignment',
+  // Only runs for subject 'user-guide' (transcodes the uploaded GIF into one
+  // clip per scene); see StepProgress, which filters it out for every other
+  // subject. Runs after alignment because it paces each scene's clip to that
+  // scene's own aligned duration.
+  'screencast',
   'compose',
   'layout_gate',
   'render',
 ] as const
 export type PipelineStep = (typeof PIPELINE_STEPS)[number]
 
-export type Subject = 'lab-management' | 'tech'
+export type Subject = 'lab-management' | 'tech' | 'user-guide'
 export type Orientation = 'vertical' | 'horizontal'
-export const SUBJECTS: Subject[] = ['tech', 'lab-management']
+export const SUBJECTS: Subject[] = ['tech', 'lab-management', 'user-guide']
 export const SUBJECT_LABELS: Record<Subject, string> = {
   'lab-management': 'Laboratory Management (ISO/IEC 17025)',
   tech: 'Tech',
+  'user-guide': 'Software User Guide (screen recording)',
 }
 
 // 'topic' → LLM writes the narration; 'script' → user supplies it verbatim
@@ -133,4 +139,17 @@ export const MAX_QUERY_LENGTH = 300
 export const MAX_SCRIPT_LENGTH: Record<Orientation, number> = {
   vertical: 1200,
   horizontal: 9000,
+}
+
+// Mirrors settings.max_docx_bytes / max_gif_bytes (app/config.py).
+export const MAX_DOCX_BYTES = 10 * 1024 * 1024
+export const MAX_GIF_BYTES = 60 * 1024 * 1024
+
+// document: a .docx guide — one Heading-styled section per step, each naming
+// its own GIF in a caption line. files: those step GIFs, in ANY order — the
+// server matches each to its step by filename, not upload order.
+export interface CreateScreencastVideoRequest {
+  document: File
+  files: File[]
+  language: Language
 }

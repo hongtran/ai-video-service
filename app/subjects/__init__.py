@@ -1,5 +1,5 @@
 from app.config import Settings
-from app.subjects import lab_management, tech
+from app.subjects import lab_management, tech, user_guide
 from app.subjects.base import SUPPORTED_SUBJECTS, SubjectConfig, SubjectName
 
 
@@ -8,6 +8,8 @@ def get_subject_config(subject: str, settings: Settings) -> SubjectConfig:
         return lab_management.get_config(settings)
     if subject == "tech":
         return tech.get_config(settings)
+    if subject == "user-guide":
+        return user_guide.get_config(settings)
     raise ValueError(f"Unsupported subject: {subject}")
 
 

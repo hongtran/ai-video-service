@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "User Guide (Software Screencast) HyperFrames Data",
+  "type": "object",
+  "required": ["config", "scenes"],
+  "properties": {
+    "config": {
+      "type": "object",
+      "required": ["topic", "slug", "totalDuration", "screencast"],
+      "properties": {
+        "topic":         { "type": "string", "description": "Human-readable topic title" },
+        "slug":          { "type": "string", "description": "kebab-case output directory name" },
+        "totalDuration": { "type": "number", "description": "Total video duration in seconds" },
+        "orientation":   { "type": "string", "enum": ["horizontal"], "description": "Canvas orientation. This template is horizontal-only (16:9, 1920×1080) — screen recordings are landscape." },
+        "width":         { "type": "number", "description": "Explicit canvas width; overrides the orientation default" },
+        "height":        { "type": "number", "description": "Explicit canvas height; overrides the orientation default" },
+        "audio":         { "type": "string", "description": "Single full-script narration path relative to videos/<slug>/" },
+        "screencast":     { "type": "string", "description": "REQUIRED. Path (relative to videos/<slug>/) to the transcoded screen-recording MP4 that plays as a root-level video under the entire video — every scene composites transparently on top of it." },
+        "capHighlight":  { "type": "string", "description": "Karaoke highlight color (hex) for the caption word currently being spoken. Default #FFD24A (gold)." }
+      }
+    },
+    "scenes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "start", "duration"],
+        "properties": {
+          "id":   { "type": "string", "description": "Unique kebab-case id → filename and composition-id" },
+          "type": {
+            "type": "string",
+            "description": "Frame type selector. A screen recording plays underneath every scene, for the whole video — every type here is a TRANSPARENT overlay, never a full-bleed image or diagram. No type generates or references any picture.",
+            "enum": ["screencast", "title-card", "outro"],
+            "typeUsage": {
+              "screencast": "DEFAULT for almost every scene. Bottom scrim, an optional short step-title badge, and the karaoke caption line, all over the live recording. Use this unless the scene is the very first or very last in the video.",
+              "title-card": "ONLY the opening scene. Large centered headline over the recording (which keeps playing, dimmed, behind it), then fades out to hand off to the plain screencast overlay.",
+              "outro": "ONLY the closing scene. Heavier centered scrim with a closing headline + subheadline, held to the end of the video."
+            }
+          },
+
+          "start":    { "type": "number", "description": "Scene start in seconds (system-computed from alignment)." },
+          "duration": { "type": "number", "description": "Scene duration in seconds." },
+          "transition": { "type": "string", "enum": ["fade", "slide", "cut", "punch", "shake"], "description": "Transition into the NEXT scene" },
+
+          "fg":     { "type": "string", "description": "Foreground/text color (hex). Optional — defaults are tuned for legibility over a live recording." },
+          "accent": { "type": "string", "description": "Keyword highlight / glow color (hex). Optional." },
+
+          "eyebrow":      { "type": "string", "description": "Small mono badge above the headline, ≤24 chars. (title-card, outro)" },
+          "headline":     { "type": "string", "description": "Main display text, ≤44 chars; wrap key words in **double asterisks** for accent highlight. REQUIRED for title-card and outro." },
+          "subheadline":  { "type": "string", "description": "Secondary line under the headline, ≤60 chars. REQUIRED for outro, optional for title-card." },
+          "stepTitle":    { "type": "string", "description": "Short imperative action label for the step currently playing, 2-5 words, e.g. 'Open Settings'. Optional — omit on scenes that are a transition or aside rather than a distinct step; a badge on every scene is noise over the recording. (screencast)" },
+
+          "captions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Naturally-split caption chunks displayed sequentially during the scene, 2-6 words and ≤55 chars each. Doubles as the scene's expected narration text (chunks joined with spaces). System-supplied, not authored."
+          },
+          "captionTiming": {
+            "type": "array",
+            "description": "Populate/align-computed, not hand-authored: one {text,start,end,words} per captions[] chunk in scene-local seconds. words[] holds one {text,start,end} per whitespace token for the karaoke spoken-word highlight.",
+            "items": {
+              "type": "object",
+              "required": ["text", "start", "end"],
+              "properties": {
+                "text":  { "type": "string" },
+                "start": { "type": "number" },
+                "end":   { "type": "number" },
+                "words": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["text", "start", "end"],
+                    "properties": {
+                      "text":  { "type": "string" },
+                      "start": { "type": "number" },
+                      "end":   { "type": "number" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;800&display=swap");
+/* Transparent root: the demo keeps playing behind the title, then the
+   scrim/title fade out and hand off to the plain screencast overlay. */
+#root { position:absolute; inset:0; width:{{width}}px; height:{{height}}px; background:transparent; color:{{fg}}; overflow:hidden; font-family:'Space Grotesk','Inter',sans-serif; }
+#main-clip.horizontal { --pad:130px; --cap-size:44px; --cap-bottom:80px; --cap-maxw:1400px; --eyebrow-size:32px; --headline-size:96px; --sub-size:38px; }
+
+.scrim { position:absolute; inset:0; background:radial-gradient(120% 100% at 50% 40%, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.25) 100%); }
+.titleblock { position:absolute; z-index:3; left:var(--pad); right:var(--pad); top:50%; transform:translateY(-50%); text-align:center; }
+.eyebrow { font-family:'JetBrains Mono',monospace; font-size:var(--eyebrow-size); font-weight:700; letter-spacing:3px; text-transform:uppercase; color:{{accent}}; }
+.headline { margin-top:14px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:var(--headline-size); line-height:1.05; letter-spacing:-1px; color:#FFFFFF; text-shadow:0 3px 24px rgba(0,0,0,0.6); }
+.subheadline { margin-top:20px; font-family:'Inter',sans-serif; font-weight:400; font-size:var(--sub-size); color:#E6EDF3cc; }
+
+.caption-zone { position:absolute; bottom:var(--cap-bottom); left:0; right:0; display:flex; align-items:center; justify-content:center; z-index:5; }
+.caption { position:relative; width:calc(100% - 2*var(--pad)); max-width:var(--cap-maxw); height:2.4em; font-size:var(--cap-size); }
+.cap-chunk { position:absolute; width:100%; left:0; top:50%; transform:translateY(-50%); font-family:'Inter',sans-serif; font-weight:800; text-align:center; line-height:1.3; opacity:0; text-shadow:0 2px 16px rgba(0,0,0,0.7); }
+.cap-chunk .cw { display:inline-block; white-space:pre; }
+.hl { padding:0 .14em; border-radius:10px; background:{{accent}}; color:#0A0E14; }
+</style>
+
+<div id="root" data-composition-id="{{id}}" data-width="{{width}}" data-height="{{height}}" data-duration="{{duration}}" data-start="0">
+  <section class="clip {{orientation}}" id="main-clip" data-start="0" data-duration="{{duration}}" data-track-index="1">
+    <div class="scrim"></div>
+    <div class="titleblock">
+      <div class="eyebrow">{{eyebrow}}</div>
+      <div class="headline">{{headline}}</div>
+      <div class="subheadline">{{subheadline}}</div>
+    </div>
+    <div class="caption-zone"><div class="caption"></div></div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script>
+window.__timelines = window.__timelines || {};
+(function(){
+  var root = document.getElementById('root');
+  var DUR = parseFloat('{{duration}}') || 5;
+  function $(s){ return root.querySelector(s); }
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function hl(t){ return esc(t).replace(/\*\*(.+?)\*\*/g,'<span class="hl">$1<\/span>'); }
+  function splitMarks(t){ return String(t).replace(/\*\*(.+?)\*\*/g, function(_m, inner){
+    return inner.split(/\s+/).map(function(w){ return '**' + w + '**'; }).join(' '); }); }
+
+  ['.eyebrow','.headline','.subheadline'].forEach(function(sel){ var el=$(sel); if(!el)return; var t=el.textContent.trim(); if(!t){el.style.display='none';return;} el.innerHTML=hl(t); });
+
+  var tl = gsap.timeline({ paused:true });
+  tl.fromTo($('.scrim'), { opacity:0 }, { opacity:1, duration:0.5 }, 0);
+  tl.fromTo($('.titleblock'), { opacity:0, y:24 }, { opacity:1, y:0, duration:0.5, ease:'power3.out' }, 0.2);
+  // The recording is the point of the video — the title card fades out with
+  // time to spare so the demo reads as continuous, not paused-then-resumed.
+  var fadeStart = Math.max(0.6, DUR - 0.6);
+  tl.to($('.scrim'), { opacity:0, duration:0.5 }, fadeStart);
+  tl.to($('.titleblock'), { opacity:0, y:-16, duration:0.5, ease:'power2.in' }, fadeStart);
+
+  var CT = {{captionTiming}};
+  var capHost = $('.caption');
+  var caps = (Array.isArray(CT) ? CT : []).map(function(c){
+    var d = document.createElement('div'); d.className = 'cap-chunk';
+    var ws = Array.isArray(c.words) ? c.words : [];
+    d.innerHTML = ws.length
+      ? ws.map(function(w){ return '<span class="cw">' + hl(w.text) + ' </span>'; }).join('')
+      : hl(splitMarks(c.text));
+    capHost.appendChild(d);
+    return d;
+  });
+  caps.forEach(function(el, i){
+    var t = CT[i]; if(!t) return;
+    if(i < caps.length - 1){
+      var nextStart = CT[i+1] ? CT[i+1].start : t.end;
+      var gap = Math.max(0.02, nextStart - t.start);
+      var fadeOutDur = Math.min(0.12, gap);
+      var fadeInDur = Math.min(i===0?0.2:0.18, Math.max(0.01, gap - fadeOutDur));
+      tl.to(el, { opacity:1, duration:fadeInDur }, t.start);
+      tl.to(el, { opacity:0, duration:fadeOutDur }, nextStart - fadeOutDur);
+    } else {
+      tl.to(el, { opacity:1, duration:i===0?0.2:0.18 }, t.start);
+    }
+    var ws = Array.isArray(t.words) ? t.words : [];
+    var spans = el.querySelectorAll('.cw');
+    ws.forEach(function(w, wi){
+      var span = spans[wi]; if(!span || span.querySelector('.hl')) return;
+      tl.to(span, { color:'{{capHighlight}}', duration:0.12, ease:'power2.out' }, w.start);
+      tl.to(span, { color:'#FFFFFF', duration:0.15 }, Math.max(w.start + 0.12, w.end));
+    });
+  });
+
+  window.__timelines['{{id}}'] = tl;
+})();
+</script>
+</template>
+</body>
+</html>

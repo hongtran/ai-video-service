@@ -3,6 +3,7 @@ import {
   type InputMode,
   type JobStatus,
   type PipelineStep,
+  type Subject,
 } from '../api/types'
 
 const STEP_LABELS: Record<PipelineStep, string> = {
@@ -10,6 +11,7 @@ const STEP_LABELS: Record<PipelineStep, string> = {
   segment: 'Scene split',
   tts: 'Text-to-speech',
   transcription: 'Transcription',
+  screencast: 'Screencast',
   authoring: 'Scene authoring',
   image_gen: 'Image generation',
   alignment: 'Alignment',
@@ -45,16 +47,22 @@ export default function StepProgress({
   currentStep,
   status,
   inputMode,
+  subject,
 }: {
   currentStep: PipelineStep | null
   status: JobStatus
   inputMode: InputMode
+  subject: Subject
 }) {
   // Script-mode jobs supply the narration, so the NARRATION step never runs.
-  const steps =
-    inputMode === 'script'
-      ? PIPELINE_STEPS.filter((s) => s !== 'narration')
-      : PIPELINE_STEPS
+  // SCREENCAST only runs for subject 'user-guide' — showing it for every
+  // other subject would pre-check a step the job never performs, since its
+  // index sits before the next step the backend actually reports.
+  const steps = PIPELINE_STEPS.filter((s) => {
+    if (s === 'narration') return inputMode !== 'script'
+    if (s === 'screencast') return subject === 'user-guide'
+    return true
+  })
   return (
     <ol className="step-progress">
       {steps.map((step) => {

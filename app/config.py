@@ -48,6 +48,24 @@ class Settings(BaseSettings):
     # so a video's images finish in roughly total/concurrency time.
     image_concurrency: int = 4
 
+    # Screencast (user-guide subject): a .docx guide + one uploaded GIF per
+    # narration step are transcoded into one root-level <video> under the whole
+    # video (see app/documents/docx.py, pipeline/steps/screencast.py). A GIF
+    # can't be rendered as a GIF — the renderer seeks a paused timeline, while a
+    # GIF animates on the browser's own clock, so it would freeze on frame 0.
+    max_docx_bytes: int = 50 * 1024 * 1024
+    max_gif_bytes: int = 100 * 1024 * 1024
+    screencast_fps: int = 30
+    screencast_max_width: int = 1920
+    # Each step's own GIF is time-scaled (ffmpeg setpts) to fill that scene's
+    # aligned duration, but only within this band. Unclamped, a 3s GIF over 45s
+    # of narration becomes a near-frozen crawl and a 5-minute GIF over 40s
+    # becomes an unreadable blur; outside the band we hold the last frame / trim
+    # instead.
+    screencast_min_speed_factor: float = 0.4
+    screencast_max_speed_factor: float = 10
+    screencast_timeout_seconds: int = 3600
+
     # Vietnamese narration uses ElevenLabs instead of OpenAI TTS — noticeably
     # better Vietnamese prosody than gpt-4o-mini-tts. Every other language
     # keeps using OpenAI TTS (see tts_model above). Required only when a job

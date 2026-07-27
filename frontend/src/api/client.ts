@@ -1,5 +1,6 @@
 import { clearAdminToken, getAdminToken } from '../lib/adminAuth'
 import type {
+  CreateScreencastVideoRequest,
   CreateVideoRequest,
   CreateVideoResponse,
   CreateYouTubeUploadRequest,
@@ -75,6 +76,40 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function createVideo(body: CreateVideoRequest): Promise<CreateVideoResponse> {
   return request('/api/v1/videos', { method: 'POST', body: JSON.stringify(body) })
+}
+
+/** subject='user-guide' videos: a .docx guide + one screen-recording GIF per
+ * step (matched to its step BY FILENAME on the server, not upload order — see
+ * app/documents/docx.py), uploaded as multipart (not JSON, unlike
+ * createVideo). Deliberately does NOT go through `request` / `authHeaders`:
+ * those set Content-Type: application/json unconditionally whenever a body is
+ * present, and a manually-set Content-Type on a FormData body strips the
+ * multipart boundary the browser would otherwise generate, breaking the
+ * upload. */
+export async function uploadScreencastVideo(
+  body: CreateScreencastVideoRequest,
+): Promise<CreateVideoResponse> {
+  const form = new FormData()
+  form.append('document', body.document)
+  for (const file of body.files) form.append('files', file)
+  form.append('language', body.language)
+  // subject and orientation are fixed by this endpoint (user-guide, horizontal
+  // — screen recordings are landscape); the server defaults cover them.
+
+  const token = getAdminToken()
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${BASE}/api/v1/videos/screencast`, {
+    method: 'POST',
+    headers,
+    body: form,
+  })
+  if (!res.ok) {
+    handleAdminSessionExpiry(res)
+    throw await toApiError(res)
+  }
+  return res.json() as Promise<CreateVideoResponse>
 }
 
 export function listVideos(): Promise<JobSummary[]> {

@@ -1,0 +1,32 @@
+{
+  "config": {
+    "slug": "test-user-guide",
+    "topic": "User guide test",
+    "totalDuration": 14,
+    "orientation": "horizontal",
+    "screencast": "assets/media/screencast.mp4"
+  },
+  "scenes": [
+    {
+      "id": "s1", "type": "title-card", "start": 0, "duration": 4,
+      "eyebrow": "GETTING STARTED",
+      "headline": "Invite your **first teammate**",
+      "captions": ["In this guide, you'll add", "a teammate to your workspace."]
+    },
+    {
+      "id": "s2", "type": "screencast", "start": 4, "duration": 4,
+      "stepTitle": "Open **Settings**",
+      "captions": ["Click your avatar in the top right,", "then choose **Settings**."]
+    },
+    {
+      "id": "s3", "type": "screencast", "start": 8, "duration": 2,
+      "captions": ["It might take a moment to load."]
+    },
+    {
+      "id": "s4", "type": "outro", "start": 10, "duration": 4,
+      "headline": "That's **all it takes**",
+      "subheadline": "Your teammate gets an email invite right away.",
+      "captions": ["And that's how you add a teammate.", "**You're all set.**"]
+    }
+  ]
+}
