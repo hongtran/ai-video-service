@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     )
 
     llm_model: str = "gpt-4o-mini"
+    author_llm_model: str = "gpt-4o"
+    scenes_llm_model: str = "gpt-4o"
     # Narration + scene split run warm enough to write well, cool enough to
     # obey the verbatim-captions rule. At OpenAI's default (1.0) the model
     # paraphrases and silently drops clauses, which alignment then rejects.

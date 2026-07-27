@@ -167,7 +167,7 @@ async def author_batch(
 
         async def _call() -> str:
             completion = await client.chat.completions.create(
-                model=settings.llm_model,
+                model=settings.author_llm_model,
                 messages=messages,
                 response_format={"type": "json_object"},
                 temperature=settings.llm_temperature,
