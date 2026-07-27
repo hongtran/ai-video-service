@@ -137,7 +137,7 @@ export interface YouTubeUploadDetail {
 // Topic is capped at 300 for both video types; script caps differ by orientation.
 export const MAX_QUERY_LENGTH = 300
 export const MAX_SCRIPT_LENGTH: Record<Orientation, number> = {
-  vertical: 1200,
+  vertical: 1400,
   horizontal: 9000,
 }
 

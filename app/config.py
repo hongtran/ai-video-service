@@ -143,7 +143,7 @@ class Settings(BaseSettings):
     max_query_length: int = 300
     # Script/narration input caps (script input mode), by video type: vertical is
     # the short single-pass flow (45-90s), horizontal the long-form one (5-10 min).
-    max_script_length_short: int = 1200
+    max_script_length_short: int = 1400
     max_script_length_long: int = 9000
 
     # Single admin account. Both unset => auth disabled (dev/stub mode) with a
