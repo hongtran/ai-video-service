@@ -146,6 +146,31 @@ class SubjectSupportTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(schema_types, set(subject_config.required_content_fields))
 
+    def test_user_guide_subject_config_is_well_formed(self) -> None:
+        settings = Settings()
+        subject_config = get_subject_config("user-guide", settings)
+
+        schema = scene_split.load_scene_schema(subject_config)
+        expected_schema_path = (
+            settings.hyperframes_dir / "templates" / "user-guide" / "schema.json"
+        )
+
+        self.assertEqual(subject_config.renderer_template, "user-guide")
+        self.assertEqual(subject_config.scene_schema_path, expected_schema_path)
+        self.assertEqual(subject_config.media_source, "screencast")
+        # Empty => the IMAGE_GEN step is a no-op for this subject (no picture is
+        # ever generated — the picture is the user's own screen recording).
+        self.assertEqual(subject_config.image_frame_types, frozenset())
+        schema_types = set(
+            schema["properties"]["scenes"]["items"]["properties"]["type"]["enum"]
+        )
+        self.assertEqual(schema_types, set(subject_config.required_content_fields))
+
+    def test_tech_and_lab_management_default_to_no_media_source(self) -> None:
+        settings = Settings()
+        for subject in ("tech", "lab-management"):
+            self.assertEqual(get_subject_config(subject, settings).media_source, "none")
+
     def test_unsupported_subject_raises(self) -> None:
         settings = Settings()
         with self.assertRaises(ValueError):

@@ -59,6 +59,37 @@ class ComposeOrientationTests(unittest.TestCase):
             self.assertNotIn(key, data["config"])
 
 
+class ComposeScreencastFieldTests(unittest.TestCase):
+    """config.screencast must appear ONLY for subjects whose media_source is
+    "screencast" — the field is meaningless (and absent from the schema) for
+    every other subject, so it must not leak into their data.json."""
+
+    def setUp(self) -> None:
+        self.settings = Settings()
+        self.tech = get_subject_config("tech", self.settings)
+        self.user_guide = get_subject_config("user-guide", self.settings)
+
+    def test_screencast_key_present_for_user_guide(self) -> None:
+        data = compose.build_data(
+            "How to invite a teammate", "abcdef12-xxxx", self.user_guide, [], 40.0,
+            "horizontal",
+        )
+        self.assertEqual(data["config"]["screencast"], "assets/media/screencast.mp4")
+
+    def test_screencast_key_honors_explicit_path(self) -> None:
+        data = compose.build_data(
+            "q", "abcdef12", self.user_guide, [], 10.0, "horizontal",
+            screencast_rel_path="assets/media/custom.mp4",
+        )
+        self.assertEqual(data["config"]["screencast"], "assets/media/custom.mp4")
+
+    def test_screencast_key_absent_for_tech(self) -> None:
+        data = compose.build_data(
+            "What is RAG?", "abcdef12-xxxx", self.tech, [], 300.0, "horizontal"
+        )
+        self.assertNotIn("screencast", data["config"])
+
+
 class NarrationLengthClauseTests(unittest.TestCase):
     def setUp(self) -> None:
         self.settings = Settings()

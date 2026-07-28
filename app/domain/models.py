@@ -24,6 +24,12 @@ class PipelineStep(str, Enum):
     # imagePrompt the authoring step wrote; embeds it as a data URI.
     IMAGE_GEN = "image_gen"
     ALIGNMENT = "alignment"
+    # Transcode an uploaded GIF screencast to a seekable MP4, one clip per scene
+    # (each excerpted proportionally from the GIF and paced to that scene's own
+    # ALIGNMENT-derived duration), then concatenated. Runs after alignment
+    # because it needs each scene's real start/duration; only runs for
+    # subjects with media_source="screencast".
+    SCREENCAST = "screencast"
     COMPOSE = "compose"
     LAYOUT_GATE = "layout_gate"
     RENDER = "render"

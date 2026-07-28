@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     )
 
     llm_model: str = "gpt-4o-mini"
+    author_llm_model: str = "gpt-4o"
+    scenes_llm_model: str = "gpt-4o"
     # Narration + scene split run warm enough to write well, cool enough to
     # obey the verbatim-captions rule. At OpenAI's default (1.0) the model
     # paraphrases and silently drops clauses, which alignment then rejects.
@@ -35,7 +37,7 @@ class Settings(BaseSettings):
     # The IMAGE_GEN step calls this model with each scene's imagePrompt and embeds
     # the result as a data URI. images_enabled=false skips generation entirely
     # (frames keep their placeholder), so the pipeline runs image-API-free.
-    image_model: str = "gpt-image-1"
+    image_model: str = "gpt-image-2"
     images_enabled: bool = True
     image_quality: str = "medium"  # gpt-image-1: low | medium | high
     image_size_vertical: str = "1024x1536"   # portrait, for 9:16 videos
@@ -47,6 +49,24 @@ class Settings(BaseSettings):
     # scenes are generated in parallel (bounded by this) instead of one-by-one,
     # so a video's images finish in roughly total/concurrency time.
     image_concurrency: int = 4
+
+    # Screencast (user-guide subject): a .docx guide + one uploaded GIF per
+    # narration step are transcoded into one root-level <video> under the whole
+    # video (see app/documents/docx.py, pipeline/steps/screencast.py). A GIF
+    # can't be rendered as a GIF — the renderer seeks a paused timeline, while a
+    # GIF animates on the browser's own clock, so it would freeze on frame 0.
+    max_docx_bytes: int = 50 * 1024 * 1024
+    max_gif_bytes: int = 100 * 1024 * 1024
+    screencast_fps: int = 30
+    screencast_max_width: int = 1920
+    # Each step's own GIF is time-scaled (ffmpeg setpts) to fill that scene's
+    # aligned duration, but only within this band. Unclamped, a 3s GIF over 45s
+    # of narration becomes a near-frozen crawl and a 5-minute GIF over 40s
+    # becomes an unreadable blur; outside the band we hold the last frame / trim
+    # instead.
+    screencast_min_speed_factor: float = 0.4
+    screencast_max_speed_factor: float = 10
+    screencast_timeout_seconds: int = 3600
 
     # Vietnamese narration uses ElevenLabs instead of OpenAI TTS — noticeably
     # better Vietnamese prosody than gpt-4o-mini-tts. Every other language
@@ -125,7 +145,7 @@ class Settings(BaseSettings):
     max_query_length: int = 300
     # Script/narration input caps (script input mode), by video type: vertical is
     # the short single-pass flow (45-90s), horizontal the long-form one (5-10 min).
-    max_script_length_short: int = 1200
+    max_script_length_short: int = 1400
     max_script_length_long: int = 9000
 
     # Single admin account. Both unset => auth disabled (dev/stub mode) with a

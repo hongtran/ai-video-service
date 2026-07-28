@@ -85,6 +85,33 @@ def build_sentence_index(script: str) -> list[dict]:
     ]
 
 
+def build_scene_index_from_steps(
+    narrations: list[str], orientation: str = "vertical",
+) -> tuple[list[dict], list[SceneIndex]]:
+    """Deterministic Pass-1 replacement for subjects whose scene boundaries are
+    already known exactly (user-guide: one scene per uploaded step, each paired
+    with its own screencast GIF) — no LLM call, because there's nothing left to
+    decide. Scene i is exactly step i's own sentences.
+
+    Reuses split_sentences/derive_captions (both word-preserving) per step, so
+    this returns the same (sentences, scenes_index) shapes segment_script's LLM
+    path returns — every downstream consumer (author_scenes, align_scenes,
+    assert_three_way_equality) is unaffected by which path produced them."""
+    sentences: list[dict] = []
+    scenes_index: list[SceneIndex] = []
+    cursor = 1
+    for step_i, narration in enumerate(narrations, start=1):
+        step_sentences = split_sentences(narration)
+        idx = list(range(cursor, cursor + len(step_sentences)))
+        cursor += len(step_sentences)
+        sentences.extend({"i": i, "text": t} for i, t in zip(idx, step_sentences))
+        captions = derive_captions(step_sentences, orientation=orientation)
+        scenes_index.append(
+            SceneIndex(scene_id=f"scene-{step_i}", idx_sentences=idx, captions=captions)
+        )
+    return sentences, scenes_index
+
+
 def _normalize(text: str) -> str:
     return " ".join(str(text).split())
 
@@ -406,7 +433,7 @@ async def _segment_window(
 
     async def _call() -> str:
         completion = await client.chat.completions.create(
-            model=settings.llm_model,
+            model=settings.scenes_llm_model,
             messages=messages,
             response_format={"type": "json_object"},
             temperature=settings.llm_temperature,

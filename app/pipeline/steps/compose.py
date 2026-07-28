@@ -23,6 +23,7 @@ def build_data(
     total_duration: float,
     orientation: str = "vertical",
     metadata: dict | None = None,
+    screencast_rel_path: str | None = None,
 ) -> dict:
     slug = _slugify(query) or f"{subject_config.name}-video"
     suffix = "-h" if orientation == "horizontal" else ""
@@ -40,6 +41,11 @@ def build_data(
         "capHighlight": subject_config.cap_highlight,
         "audio": "assets/tts/narration.mp3",
     }
+    # Only the user-guide template's frames expect a screencast — every other
+    # subject's schema doesn't declare the field, so it's added conditionally
+    # rather than always, keeping data.json identical for those subjects.
+    if subject_config.media_source == "screencast":
+        config["screencast"] = screencast_rel_path or "assets/media/screencast.mp4"
     if metadata.get("description"):
         config["description"] = metadata["description"]
     if metadata.get("hashtags"):

@@ -8,7 +8,7 @@ set -euo pipefail
 #   4. render the composition to MP4 (default path, or --out_path if given)
 #   5. print the path to the rendered video on stdout
 #
-# Usage: scripts/build-video.sh <path-to-data.json> [--template <template-name>] [--out_path <output-video-path>] [--audio_file <narration-audio-file>]
+# Usage: scripts/build-video.sh <path-to-data.json> [--template <template-name>] [--out_path <output-video-path>] [--audio_file <narration-audio-file>] [--screencast_file <screencast-video-file>]
 #
 # --audio_file points at the single full-script narration file (as referenced
 # by data.json's config.audio, e.g. "assets/tts/narration.mp3"). It's staged
@@ -17,10 +17,16 @@ set -euo pipefail
 # are normally produced beforehand by:
 #   node scripts/generate-captions.mjs <audio-file> <captions.json>
 #   node scripts/align-captions.mjs    <data.json>  <captions.json>
+#
+# --screencast_file stages a pre-transcoded MP4 (as referenced by data.json's
+# config.screencast, e.g. "assets/media/screencast.mp4" — only the user-guide
+# template's data.json sets this key) so its blank-video-stub fallback never
+# fires for it. Optional; templates without config.screencast ignore it.
 
 INVOKE_DIR="$(pwd)"
 OUT_PATH=""
 AUDIO_FILE=""
+SCREENCAST_FILE=""
 TEMPLATE="lab-management"
 POSITIONAL=()
 while [ $# -gt 0 ]; do
@@ -61,6 +67,18 @@ while [ $# -gt 0 ]; do
       AUDIO_FILE="${1#*=}"
       shift
       ;;
+    --screencast_file)
+      SCREENCAST_FILE="${2:-}"
+      if [ -z "$SCREENCAST_FILE" ]; then
+        echo "Error: --screencast_file requires a value" >&2
+        exit 1
+      fi
+      shift 2
+      ;;
+    --screencast_file=*)
+      SCREENCAST_FILE="${1#*=}"
+      shift
+      ;;
     *)
       POSITIONAL+=("$1")
       shift
@@ -69,7 +87,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ ${#POSITIONAL[@]} -ne 1 ]; then
-  echo "Usage: $0 <path-to-data.json> [--template <template-name>] [--out_path <output-video-path>] [--audio_file <narration-audio-file>]" >&2
+  echo "Usage: $0 <path-to-data.json> [--template <template-name>] [--out_path <output-video-path>] [--audio_file <narration-audio-file>] [--screencast_file <screencast-video-file>]" >&2
   exit 1
 fi
 
@@ -92,6 +110,11 @@ if [ -n "$AUDIO_FILE" ] && [ ! -f "$AUDIO_FILE" ]; then
   exit 1
 fi
 
+if [ -n "$SCREENCAST_FILE" ] && [ ! -f "$SCREENCAST_FILE" ]; then
+  echo "Error: --screencast_file not found: $SCREENCAST_FILE" >&2
+  exit 1
+fi
+
 SLUG="$(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).config.slug ?? '')" "$DATA_JSON")"
 if [ -z "$SLUG" ]; then
   echo "Error: config.slug missing in $DATA_JSON" >&2
@@ -109,6 +132,17 @@ if [ -n "$AUDIO_FILE" ]; then
   echo "==> Staging narration audio from $AUDIO_FILE to $AUDIO_REL" >&2
   mkdir -p "$VIDEO_DIR/$(dirname "$AUDIO_REL")"
   cp "$AUDIO_FILE" "$VIDEO_DIR/$AUDIO_REL"
+fi
+
+if [ -n "$SCREENCAST_FILE" ]; then
+  SCREENCAST_REL="$(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).config.screencast ?? '')" "$DATA_JSON")"
+  if [ -z "$SCREENCAST_REL" ]; then
+    echo "Error: --screencast_file given but config.screencast missing in $DATA_JSON" >&2
+    exit 1
+  fi
+  echo "==> Staging screencast video from $SCREENCAST_FILE to $SCREENCAST_REL" >&2
+  mkdir -p "$VIDEO_DIR/$(dirname "$SCREENCAST_REL")"
+  cp "$SCREENCAST_FILE" "$VIDEO_DIR/$SCREENCAST_REL"
 fi
 
 echo "==> Populating template ($TEMPLATE, slug: $SLUG)" >&2

@@ -1,10 +1,13 @@
+import asyncio
 import logging
+from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 
 from app.api.schemas import CreateVideoRequest, CreateVideoResponse, JobDetail, JobSummary
 from app.cleanup import purge_job
+from app.documents.docx import DocxExtractError, extract_steps
 from app.domain.models import Job, JobStatus
 from app.llm.client import (
     GuardMisconfiguredError,
@@ -35,7 +38,18 @@ ALLOWED_ARTIFACTS = {
     "meta.json",
     "video.mp4",
     "thumbnail.jpg",
+    "source.docx",
+    "steps.json",
+    "screencast.mp4",
 }
+
+# Both GIF89a (animated, the common case) and GIF87a (older, static-capable)
+# are valid — the extension alone is not proof of content, so every upload is
+# checked against these regardless of filename.
+_GIF_MAGIC = (b"GIF87a", b"GIF89a")
+
+# .docx is a zip file — this is its local-file-header signature.
+_DOCX_MAGIC = b"PK\x03\x04"
 
 
 def _deps(
@@ -52,20 +66,60 @@ def _title_from_script(script: str, limit: int = 80) -> str:
     return f"{title[: limit - 1]}…" if len(title) > limit else title
 
 
+async def _normalize_script(
+    normalizer: ScriptNormalizer, script: str, subject: str, language: str
+) -> tuple[str, str]:
+    """Clean formatting (headings, markdown, bullets) into plain spoken prose and
+    derive a title, in one LLM call. On failure, falls back to the raw script +
+    a heuristic title so the user is never blocked. Shared by every input path
+    that supplies its own narration verbatim (script mode, GIF screencast mode)."""
+    title = _title_from_script(script)
+    try:
+        result = await normalizer.normalize(script, subject, language)
+        return result.narration.strip() or script, result.title.strip() or title
+    except (NormalizerUnavailableError, NormalizerMisconfiguredError) as exc:
+        logger.warning("script normalization failed, using raw script: %s", exc)
+        return script, title
+
+
+async def _read_upload_limited(file: UploadFile, max_bytes: int, *, label: str) -> bytes:
+    """Read an upload in chunks, rejecting it the moment it crosses max_bytes
+    rather than buffering an arbitrarily large file into memory first."""
+    chunks: list[bytes] = []
+    total = 0
+    chunk_size = 1024 * 1024
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"{label} exceeds the {max_bytes // (1024 * 1024)} MB limit.",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @router.post(
     "/videos", response_model=CreateVideoResponse, status_code=status.HTTP_202_ACCEPTED
 )
 async def request_video(body: CreateVideoRequest, request: Request) -> CreateVideoResponse:
     jobs, _, queue, guard, normalizer = _deps(request)
     settings = request.app.state.settings
+    if body.subject == "user-guide":
+        raise HTTPException(
+            status_code=400,
+            detail="subject='user-guide' requires a screen recording — use "
+            "POST /api/v1/videos/screencast instead.",
+        )
     subject_config = get_subject_config(body.subject, settings)
 
     if body.input_mode == "script":
         # User supplies the narration: enforce the per-orientation cap (on the raw
-        # input, before normalization) and skip the subject-relevance guard (trusted
-        # content). A single LLM call then cleans formatting (headings, markdown,
-        # bullets) into plain spoken prose and derives a title; on failure we fall
-        # back to the raw script + a heuristic title so the user is never blocked.
+        # input, before normalization) and skip the subject-relevance guard
+        # (trusted content).
         script = (body.script or "").strip()
         max_len = (
             settings.max_script_length_short
@@ -78,13 +132,7 @@ async def request_video(body: CreateVideoRequest, request: Request) -> CreateVid
             raise HTTPException(
                 status_code=400, detail=f"Script too long (max {max_len} characters)."
             )
-        title = _title_from_script(script)
-        try:
-            result = await normalizer.normalize(script, body.subject, body.language)
-            script = result.narration.strip() or script
-            title = result.title.strip() or title
-        except (NormalizerUnavailableError, NormalizerMisconfiguredError) as exc:
-            logger.warning("script normalization failed, using raw script: %s", exc)
+        script, title = await _normalize_script(normalizer, script, body.subject, body.language)
         job = Job(
             input_mode="script",
             query=title,
@@ -131,6 +179,149 @@ async def request_video(body: CreateVideoRequest, request: Request) -> CreateVid
             orientation=body.orientation,
             language=body.language,
         )
+
+    await jobs.create(job)
+    await queue.enqueue(job.id)
+    return CreateVideoResponse(
+        id=job.id,
+        input_mode=job.input_mode,
+        subject=job.subject,
+        orientation=job.orientation,
+        language=job.language,
+        status=job.status,
+    )
+
+
+@router.post(
+    "/videos/screencast",
+    response_model=CreateVideoResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def request_screencast_video(
+    request: Request,
+    document: UploadFile = File(
+        ..., description="A .docx software user guide — one Heading-styled "
+        "section per step, each naming its own GIF in a caption line."
+    ),
+    files: list[UploadFile] = File(
+        ..., description="The step GIFs named in the guide's captions, any order."
+    ),
+    subject: Literal["user-guide"] = Form("user-guide"),
+    orientation: Literal["horizontal"] = Form("horizontal"),
+    language: Literal["en", "vi"] = Form("en"),
+) -> CreateVideoResponse:
+    """Software-user-guide videos: one screen-recording GIF per narration step,
+    matched to that step BY FILENAME from a .docx guide's own captions — not by
+    upload order. Each scene's screencast clip is exactly its own step's GIF
+    (see app/pipeline/steps/screencast.py); narration is the guide's own text,
+    normalized per step (headings/captions are structural, never spoken)."""
+    jobs, artifacts, queue, _, normalizer = _deps(request)
+    settings = request.app.state.settings
+    # Resolving the config validates the subject exists; failures here would be
+    # a server misconfiguration, not a user error, so we let it raise as-is.
+    get_subject_config(subject, settings)
+
+    docx_bytes = await _read_upload_limited(document, settings.max_docx_bytes, label="Document")
+    if docx_bytes[:4] != _DOCX_MAGIC:
+        raise HTTPException(
+            status_code=400,
+            detail="File is not a .docx (bad magic bytes) — the extension "
+            "alone isn't checked.",
+        )
+
+    try:
+        doc_steps = extract_steps(docx_bytes)
+    except DocxExtractError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+
+    if not files:
+        raise HTTPException(status_code=400, detail="At least one GIF must be uploaded.")
+
+    uploaded: dict[str, tuple[str, bytes]] = {}
+    for f in files:
+        data = await _read_upload_limited(
+            f, settings.max_gif_bytes, label=f"GIF '{f.filename}'"
+        )
+        if data[:6] not in _GIF_MAGIC:
+            raise HTTPException(
+                status_code=400,
+                detail=f"'{f.filename}' is not a GIF (bad magic bytes) — the "
+                "extension alone isn't checked.",
+            )
+        key = (f.filename or "").strip().lower()
+        if not key:
+            raise HTTPException(status_code=400, detail="An uploaded GIF has no filename.")
+        if key in uploaded:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Multiple uploaded GIFs are named '{f.filename}'.",
+            )
+        uploaded[key] = (f.filename, data)
+
+    # Bijection: every step must resolve to exactly one upload, and every
+    # upload must be referenced by exactly one step — either direction failing
+    # usually means the wrong file was selected, so both are named explicitly
+    # rather than one side being silently ignored.
+    matched_bytes: list[bytes] = []
+    used_keys: set[str] = set()
+    unmatched_steps: list[str] = []
+    for doc_step in doc_steps:
+        key = doc_step.gif_filename.strip().lower()
+        entry = uploaded.get(key)
+        if entry is None:
+            unmatched_steps.append(doc_step.gif_filename)
+            continue
+        used_keys.add(key)
+        matched_bytes.append(entry[1])
+    unused_uploads = [name for key, (name, _) in uploaded.items() if key not in used_keys]
+
+    if unmatched_steps or unused_uploads:
+        parts = []
+        if unmatched_steps:
+            parts.append(
+                "the guide references GIF file(s) that weren't uploaded: "
+                + ", ".join(unmatched_steps)
+            )
+        if unused_uploads:
+            parts.append(
+                "uploaded GIF(s) aren't referenced by any step in the guide: "
+                + ", ".join(unused_uploads)
+            )
+        uploaded_names = ", ".join(sorted(name for name, _ in uploaded.values()))
+        raise HTTPException(
+            status_code=400,
+            detail="; ".join(parts) + f". Uploaded: {uploaded_names}.",
+        )
+
+    normalized = await asyncio.gather(*(
+        _normalize_script(normalizer, doc_step.narration, subject, language)
+        for doc_step in doc_steps
+    ))
+    narrations = [narration for narration, _ in normalized]
+    script = "\n\n".join(narrations)
+    title = _title_from_script(script)
+
+    job = Job(
+        input_mode="script",
+        query=title,
+        script=script,
+        subject=subject,
+        orientation=orientation,
+        language=language,
+    )
+    # Written before the job is queued so the worker never races the artifacts:
+    # by the time SEGMENT/SCREENCAST can run, steps.json and every step GIF are
+    # already on disk.
+    artifacts.save_bytes(job.id, "source.docx", docx_bytes)
+    artifacts.save_json(
+        job.id, "steps.json",
+        [
+            {"gif": f"step-{i:03d}.gif", "narration": narrations[i]}
+            for i in range(len(narrations))
+        ],
+    )
+    for i, gif_bytes in enumerate(matched_bytes):
+        artifacts.save_bytes(job.id, f"source_gifs/step-{i:03d}.gif", gif_bytes)
 
     await jobs.create(job)
     await queue.enqueue(job.id)

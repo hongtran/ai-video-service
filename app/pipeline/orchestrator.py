@@ -16,7 +16,7 @@ from openai import AsyncOpenAI
 from app.config import Settings
 from app.domain.models import JobStatus, PipelineStep
 from app.observability import job_trace
-from app.pipeline.steps import author, compose, images, layout_gate, narration, render, scene_split, segment, thumbnail, transcribe, tts
+from app.pipeline.steps import author, compose, images, layout_gate, narration, render, scene_split, screencast, segment, thumbnail, transcribe, tts
 from app.pipeline.steps.align import align_scenes
 from app.pipeline.steps.layout_gate import LayoutGateError
 from app.storage.artifacts import ArtifactStore
@@ -77,13 +77,26 @@ class RealVideoPipeline:
             self._artifacts.save_text(job_id, "script.txt", script)
 
             step = await self._step(job_id, PipelineStep.SEGMENT)
-            sentences = segment.build_sentence_index(script)
-            self._artifacts.save_json(job_id, "sentences.json", sentences)
-            scenes_index, metadata = await segment.segment_script(
-                self._client, self._settings, subject_config, sentences,
-                orientation=job.orientation, language=job.language,
-            )
+            if subject_config.media_source == "screencast":
+                # Scene boundaries are already known exactly — one scene per
+                # uploaded step, each paired with its own screencast GIF (see
+                # app/documents/docx.py + app/api/router.py). Nothing for an
+                # LLM to decide, so this is a pure local rebuild from the
+                # per-step narration the router already normalized and saved.
+                steps_manifest = self._artifacts.load_json(job_id, "steps.json")
+                narrations = [s["narration"] for s in steps_manifest]
+                sentences, scenes_index = segment.build_scene_index_from_steps(
+                    narrations, job.orientation
+                )
+                metadata = {}
+            else:
+                sentences = segment.build_sentence_index(script)
+                scenes_index, metadata = await segment.segment_script(
+                    self._client, self._settings, subject_config, sentences,
+                    orientation=job.orientation, language=job.language,
+                )
             segment.assert_three_way_equality(scenes_index, sentences, script)
+            self._artifacts.save_json(job_id, "sentences.json", sentences)
             self._artifacts.save_json(
                 job_id, "scenes_index.json", [s.to_dict() for s in scenes_index]
             )
@@ -128,6 +141,24 @@ class RealVideoPipeline:
             step = await self._step(job_id, PipelineStep.ALIGNMENT)
             timed_scenes = align_scenes(scenes, words, duration, job.language)
 
+            # Build the screencast AFTER alignment, not before: each scene's real
+            # start/duration (just computed above) is what each scene's own
+            # step GIF gets speed-matched to. Runs once — re-authoring below
+            # never changes a scene's start/duration/captionTiming (see
+            # _reauthor_offending), so this never needs to be rebuilt across
+            # layout-gate retry rounds.
+            screencast_path = None
+            if subject_config.media_source == "screencast":
+                step = await self._step(job_id, PipelineStep.SCREENCAST)
+                gif_paths = [
+                    self._artifacts.path_for(job_id, f"source_gifs/step-{i:03d}.gif")
+                    for i in range(len(timed_scenes))
+                ]
+                screencast_path = self._artifacts.path_for(job_id, "screencast.mp4")
+                await screencast.build_screencast(
+                    self._settings, gif_paths, screencast_path, timed_scenes
+                )
+
             rounds = max(1, self._settings.outer_retry_limit)
             data_path = None
             for attempt in range(1, rounds + 1):
@@ -137,6 +168,7 @@ class RealVideoPipeline:
                 data = compose.build_data(
                     job.query, job_id, subject_config, timed_scenes, duration,
                     job.orientation, metadata,
+                    screencast_rel_path="assets/media/screencast.mp4",
                 )
                 compose.validate_data(data, scene_split.load_scene_schema(subject_config))
                 data_path = self._artifacts.save_json(job_id, "data.json", data)
@@ -174,12 +206,13 @@ class RealVideoPipeline:
             step = await self._step(job_id, PipelineStep.RENDER)
             out_path = self._artifacts.path_for(job_id, "video.mp4")
             await render.render_video(
-                self._settings, subject_config, data_path, audio_path, out_path
+                self._settings, subject_config, data_path, audio_path, out_path,
+                screencast_file=screencast_path,
             )
 
             # Designed YouTube thumbnail from the cover scene. Best-effort (like
             # images/alignment): a failure must not fail a rendered video.
-            if self._settings.thumbnail_enabled and job.orientation == "horizontal":
+            if self._settings.thumbnail_enabled and job.orientation == "horizontal" and self._settings.environment == "prod":
                 try:
                     step = await self._step(job_id, PipelineStep.THUMBNAIL)
                     await thumbnail.generate_thumbnail(

@@ -211,6 +211,7 @@ class AutoClearAfterUploadTests(UploadApiHarness):
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
         # Same wiring as production when clear_job_after_youtube_upload=True.
+        # Auto-clear is also gated to environment="prod" (see UploadRunner._run).
         self.runner = UploadRunner(
             self.uploads,
             YouTubeUploader(
@@ -219,6 +220,7 @@ class AutoClearAfterUploadTests(UploadApiHarness):
             jobs=self.jobs,
             artifacts=self.artifacts,
             clear_job_on_success=True,
+            settings=Settings(environment="prod"),
         )
 
     async def test_successful_upload_clears_job_but_keeps_upload_record(self) -> None:

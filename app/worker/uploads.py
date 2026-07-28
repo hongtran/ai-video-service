@@ -34,11 +34,13 @@ class UploadRunner:
         jobs: JobRepository | None = None,
         artifacts: ArtifactStore | None = None,
         clear_job_on_success: bool = False,
+        settings: Settings | None = None,
     ) -> None:
         self._uploads = uploads
         self._uploader = uploader
         self._jobs = jobs
         self._artifacts = artifacts
+        self._settings = settings or Settings()
         # Auto-clear needs both stores; without them it silently stays off.
         self._clear_job_on_success = (
             clear_job_on_success and jobs is not None and artifacts is not None
@@ -148,7 +150,7 @@ class UploadRunner:
                 fields["error_message"] = f"uploaded, but playlist add failed: {exc}"
         await self._uploads.update(upload_id, **fields)
         logger.info("upload %s completed: %s", upload_id, fields["video_url"])
-        if Settings.environment == "prod":
+        if self._settings.environment == "prod":
             await self._maybe_clear_job(upload.job_id)
 
     async def _maybe_clear_job(self, job_id: str) -> None:

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError, downloadVideo, getJob } from '../api/client'
+import type { Subject } from '../api/types'
 import { usePolling } from '../hooks/usePolling'
 import StepProgress from '../components/StepProgress'
 import YouTubeUploadPanel from '../components/YouTubeUploadPanel'
@@ -72,6 +73,7 @@ export default function JobDetailPage() {
           currentStep={job.current_step}
           status={job.status}
           inputMode={job.input_mode}
+          subject={job.subject as Subject}
         />
         {job.status === 'FAILED' && (
           <p className="error-text">Pipeline failed — {job.error_message ?? 'unknown error'}</p>
