@@ -71,12 +71,13 @@ export default function CreateVideoForm() {
     setScript((s) => s.slice(0, MAX_SCRIPT_LENGTH[next]))
   }
 
-  // Lab Management content is authored in Vietnamese, so picking it auto-selects
-  // the Vietnamese language (the user can still change language afterwards).
+  // Lab Management and user-guide content is authored in Vietnamese, so picking
+  // either auto-selects the Vietnamese language (the user can still change
+  // language afterwards).
   // user-guide forces horizontal — screen recordings are landscape.
   const changeSubject = (next: Subject) => {
     setSubject(next)
-    if (next === 'lab-management') setLanguage('vi')
+    if (next === 'lab-management' || next === 'user-guide') setLanguage('vi')
     if (next === 'user-guide') changeOrientation('horizontal')
   }
 
