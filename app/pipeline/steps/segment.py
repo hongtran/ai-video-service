@@ -22,7 +22,7 @@ from openai import AsyncOpenAI
 
 from app.config import Settings
 from app.languages import DEFAULT_LANGUAGE
-from app.llm.client import with_retries
+from app.llm.client import model_tuning_kwargs, with_retries
 from app.pipeline.steps import scene_split
 from app.pipeline.steps.sections import split_sentences, window_sentences
 from app.subjects import SubjectConfig
@@ -317,7 +317,14 @@ async def derive_captions_semantic(
             model=settings.llm_model,
             messages=messages,
             response_format={"type": "json_object"},
-            temperature=settings.llm_temperature,
+            # Captions are validated against the scene text with a greedy
+            # fallback below, so extra thinking buys little here.
+            **model_tuning_kwargs(
+                settings.llm_model,
+                temperature=settings.llm_temperature,
+                reasoning_effort="low",
+                seed=settings.llm_seed,
+            ),
         )
         return completion.choices[0].message.content or ""
 
@@ -436,7 +443,12 @@ async def _segment_window(
             model=settings.scenes_llm_model,
             messages=messages,
             response_format={"type": "json_object"},
-            temperature=settings.llm_temperature,
+            **model_tuning_kwargs(
+                settings.scenes_llm_model,
+                temperature=settings.llm_temperature,
+                reasoning_effort=settings.scenes_llm_reasoning_effort,
+                seed=settings.llm_seed,
+            ),
         )
         return completion.choices[0].message.content or ""
 

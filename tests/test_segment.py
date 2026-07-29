@@ -18,10 +18,12 @@ class FakeClient:
     def __init__(self, responses: list[str]) -> None:
         self._responses = list(responses)
         self.calls: list[list[dict]] = []
+        self.kwargs: list[dict] = []
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
 
-    async def _create(self, *, model, messages, response_format, temperature=None):
+    async def _create(self, *, model, messages, response_format=None, **kwargs):
         self.calls.append([dict(m) for m in messages])
+        self.kwargs.append({"model": model, **kwargs})
         body = self._responses.pop(0)
         return SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(content=body))]
