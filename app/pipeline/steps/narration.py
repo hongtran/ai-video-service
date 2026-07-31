@@ -2,7 +2,7 @@ from openai import AsyncOpenAI
 
 from app.config import Settings
 from app.languages import DEFAULT_LANGUAGE, language_name
-from app.llm.client import with_retries
+from app.llm.client import model_tuning_kwargs, with_retries
 from app.subjects import SubjectConfig
 
 
@@ -70,7 +70,12 @@ async def generate_script(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"{subject_config.topic_label}: {query}"},
             ],
-            temperature=settings.llm_temperature,
+            **model_tuning_kwargs(
+                settings.llm_model,
+                temperature=settings.llm_temperature,
+                reasoning_effort=settings.llm_reasoning_effort,
+                seed=settings.llm_seed,
+            ),
         )
         return (completion.choices[0].message.content or "").strip()
 

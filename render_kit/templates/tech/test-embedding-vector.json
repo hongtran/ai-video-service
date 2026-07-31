@@ -1,0 +1,10 @@
+{
+  "config": { "slug": "test-tech-embedding-vector", "topic": "tech embedding-vector test", "totalDuration": 6 },
+  "scenes": [{
+    "id": "s1", "type": "embedding-vector", "start": 0, "duration": 6,
+    "title": "Text **becomes** numbers",
+    "phrases": ["it's a cat"],
+    "dims": 1536,
+    "captions": ["Every word turns into", "a list of **numbers**."]
+  }]
+}

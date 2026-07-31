@@ -1,0 +1,10 @@
+{
+  "config": { "slug": "test-tech-agent-graph-k0", "topic": "tech agent-graph k0 test", "totalDuration": 7 },
+  "scenes": [{
+    "id": "s1", "type": "agent-graph", "start": 0, "duration": 7,
+    "title": "**Decide** then act",
+    "router": "need a tool?",
+    "branches": ["call tool", "answer"],
+    "captions": ["No planning step —", "straight to the **decision**."]
+  }]
+}

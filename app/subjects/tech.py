@@ -280,6 +280,102 @@ SCENE_EXAMPLES = """{
       "imagePrompt": "A realistic photograph of a data center aisle with rows of server racks and blue LED lighting, no text",
       "anim": { "preset": "focus-pull", "intensity": "medium", "focus": "center" },
       "captions": ["Your prompt reaches", "a room **like this**."]
+    },
+    {
+      "id": "example-tokenizer",
+      "type": "tokenizer",
+      "title": "It's **not** words",
+      "tokens": ["token", "ization", " isn't", " magic"]
+    },
+    {
+      "id": "example-next-token",
+      "type": "next-token",
+      "title": "It's just **guessing**",
+      "sentence": "The cat sat on the ___",
+      "rounds": [
+        { "candidates": [
+          { "token": "mat", "prob": 0.62 },
+          { "token": "rug", "prob": 0.18 },
+          { "token": "sofa", "prob": 0.09 }
+        ] }
+      ]
+    },
+    {
+      "id": "example-context-window",
+      "type": "context-window",
+      "title": "It **doesn't** remember",
+      "tokens": ["The", "cat", "sat", "on", "the", "mat", "because", "it's", "tired", "now"],
+      "limit": 6,
+      "limitLabel": "8K tokens"
+    },
+    {
+      "id": "example-embedding-vector",
+      "type": "embedding-vector",
+      "title": "Text **becomes** numbers",
+      "phrases": ["it's a cat"],
+      "dims": 1536
+    },
+    {
+      "id": "example-similarity-score",
+      "type": "similarity-score",
+      "title": "How **close** are these?",
+      "phrases": ["refund policy", "how do I return this?"],
+      "score": 0.87,
+      "threshold": 0.75
+    },
+    {
+      "id": "example-chunking",
+      "type": "chunking",
+      "title": "Cut it into **pieces**",
+      "filename": "handbook.pdf",
+      "items": [
+        "...refunds are processed within",
+        "processed within **five business days**",
+        "business days of the request being",
+        "the request being approved by staff..."
+      ]
+    },
+    {
+      "id": "example-knowledge-graph",
+      "type": "knowledge-graph",
+      "title": "The company's **knowledge graph**",
+      "nodes": [
+        { "label": "Acme Inc", "glyph": "🏢" },
+        { "label": "Jane Doe", "glyph": "🧑" },
+        { "label": "Berlin", "glyph": "📍" },
+        { "label": "Core Team", "glyph": "👥" }
+      ],
+      "edges": [
+        { "from": 0, "to": 1, "label": "founded_by" },
+        { "from": 1, "to": 3, "label": "works_at" },
+        { "from": 0, "to": 2, "label": "located_in" },
+        { "from": 2, "to": 3, "label": "based_in" }
+      ],
+      "path": [0, 1, 3]
+    },
+    {
+      "id": "example-agent-graph",
+      "type": "agent-graph",
+      "title": "The agent's **control flow**",
+      "nodes": [
+        { "label": "Plan", "glyph": "🧭" }
+      ],
+      "router": "need a tool?",
+      "branches": ["call tool", "answer"],
+      "retryLabel": "loop back"
+    },
+    {
+      "id": "example-attention-arcs",
+      "type": "attention-arcs",
+      "title": "What's the model **looking at**?",
+      "tokens": ["The", "cat", "sat", "on", "the", "mat", "because", "it'd"],
+      "highlightIndex": 7
+    },
+    {
+      "id": "example-vector-math",
+      "type": "vector-math",
+      "title": "The **analogy** that broke the internet",
+      "analogy": ["king", "man", "woman", "queen"]
     }
   ]
 }"""
@@ -308,6 +404,16 @@ REQUIRED_CONTENT_FIELDS: dict[str, list[str]] = {
     "mcp-hub": ["apps"],
     "photo": ["imagePrompt"],
     "photo-split": ["imagePrompt"],
+    "knowledge-graph": ["nodes", "edges"],
+    "attention-arcs": ["tokens"],
+    "tokenizer": ["tokens"],
+    "next-token": ["sentence", "rounds"],
+    "context-window": ["tokens"],
+    "embedding-vector": ["phrases"],
+    "similarity-score": ["phrases", "score"],
+    "chunking": ["items"],
+    "agent-graph": ["router", "branches"],
+    "vector-math": ["analogy"],
 }
 
 

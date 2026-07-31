@@ -1,0 +1,165 @@
+{
+  "config": {
+    "slug": "test-tech-showcase2-v",
+    "topic": "tech template showcase 2 — tokens, embeddings, graphs (vertical)",
+    "totalDuration": 71,
+    "orientation": "vertical"
+  },
+  "scenes": [
+    {
+      "id": "sc2-cover",
+      "type": "cover",
+      "start": 0,
+      "duration": 5,
+      "transition": "fade",
+      "eyebrow": "~/ai-engineering",
+      "headline": "Tokens, **embeddings**, graphs",
+      "captions": ["The frames behind", "how models actually **think**."]
+    },
+    {
+      "id": "sc2-tokenizer",
+      "type": "tokenizer",
+      "start": 5,
+      "duration": 6,
+      "transition": "fade",
+      "title": "It's **not** words",
+      "tokens": ["token", "ization", " isn't", " magic"],
+      "captions": ["A model never sees words,", "it sees **token IDs**."]
+    },
+    {
+      "id": "sc2-next-token",
+      "type": "next-token",
+      "start": 11,
+      "duration": 6,
+      "transition": "fade",
+      "title": "It's just **guessing**",
+      "sentence": "The cat sat on the ___",
+      "rounds": [
+        { "candidates": [
+          { "token": "mat", "prob": 0.62 },
+          { "token": "rug", "prob": 0.18 },
+          { "token": "sofa", "prob": 0.09 },
+          { "token": "floor", "prob": 0.05 }
+        ] }
+      ],
+      "captions": ["It doesn't **know**,", "it just predicts."]
+    },
+    {
+      "id": "sc2-context-window",
+      "type": "context-window",
+      "start": 17,
+      "duration": 6,
+      "transition": "fade",
+      "title": "It **doesn't** remember",
+      "tokens": ["The", "cat", "sat", "on", "the", "mat", "because", "it's", "tired", "now"],
+      "limit": 6,
+      "limitLabel": "8K tokens",
+      "captions": ["Old context **falls out**", "as new tokens come in."]
+    },
+    {
+      "id": "sc2-embedding-vector",
+      "type": "embedding-vector",
+      "start": 23,
+      "duration": 6,
+      "transition": "fade",
+      "title": "Text **becomes** numbers",
+      "phrases": ["it's a cat"],
+      "dims": 1536,
+      "captions": ["Every word turns into", "a list of **numbers**."]
+    },
+    {
+      "id": "sc2-similarity-score",
+      "type": "similarity-score",
+      "start": 29,
+      "duration": 6,
+      "transition": "fade",
+      "title": "How **close** are these?",
+      "phrases": ["refund policy", "how do I return this?"],
+      "score": 0.87,
+      "threshold": 0.75,
+      "captions": ["It's not exact words —", "it's **meaning**."]
+    },
+    {
+      "id": "sc2-chunking",
+      "type": "chunking",
+      "start": 35,
+      "duration": 6,
+      "transition": "fade",
+      "title": "Cut it into **pieces**",
+      "filename": "handbook.pdf",
+      "items": [
+        "...refunds are processed within",
+        "processed within **five business days**",
+        "business days of the request being",
+        "the request being approved by staff..."
+      ],
+      "captions": ["It's split into", "**overlapping chunks**."]
+    },
+    {
+      "id": "sc2-knowledge-graph",
+      "type": "knowledge-graph",
+      "start": 41,
+      "duration": 6,
+      "transition": "fade",
+      "title": "The company's **knowledge graph**",
+      "nodes": [
+        { "label": "Acme Inc", "glyph": "🏢" },
+        { "label": "Jane Doe", "glyph": "🧑" },
+        { "label": "Berlin", "glyph": "📍" },
+        { "label": "Core Team", "glyph": "👥" }
+      ],
+      "edges": [
+        { "from": 0, "to": 1, "label": "founded_by" },
+        { "from": 1, "to": 3, "label": "works_at" },
+        { "from": 0, "to": 2, "label": "located_in" },
+        { "from": 2, "to": 3, "label": "based_in" }
+      ],
+      "path": [0, 1, 3],
+      "captions": ["Every entity's a node,", "and it's **all connected**."]
+    },
+    {
+      "id": "sc2-agent-graph",
+      "type": "agent-graph",
+      "start": 47,
+      "duration": 7,
+      "transition": "fade",
+      "title": "The agent's **control flow**",
+      "nodes": [{ "label": "Plan", "glyph": "🧭" }],
+      "router": "need a tool?",
+      "branches": ["call tool", "answer"],
+      "retryLabel": "loop back",
+      "captions": ["It doesn't just answer —", "it **decides** what's next."]
+    },
+    {
+      "id": "sc2-attention-arcs",
+      "type": "attention-arcs",
+      "start": 54,
+      "duration": 6,
+      "transition": "fade",
+      "title": "What's the model **looking at**?",
+      "tokens": ["The", "cat", "sat", "on", "the", "mat", "because", "it'd"],
+      "highlightIndex": 7,
+      "captions": ["The model looks back", "to find **what \"it\" means**."]
+    },
+    {
+      "id": "sc2-vector-math",
+      "type": "vector-math",
+      "start": 60,
+      "duration": 6,
+      "transition": "fade",
+      "title": "The **analogy** that broke the internet",
+      "analogy": ["king", "man", "woman", "queen"],
+      "captions": ["Embeddings capture **meaning**", "as literal geometry."]
+    },
+    {
+      "id": "sc2-cta",
+      "type": "cta",
+      "start": 66,
+      "duration": 5,
+      "headline": "Now you **speak model**",
+      "subheadline": "Tokens in. Vectors through. Graphs deciding.",
+      "eyebrow": "@ai.decoded",
+      "captions": ["That's the machinery underneath.", "Follow for more **AI engineering**."]
+    }
+  ]
+}

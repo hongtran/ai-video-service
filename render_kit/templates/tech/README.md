@@ -18,9 +18,11 @@ cd videos/<slug> && npm run check && npm run render
 ```
 
 Test fixtures: `test-<type>.json` renders one frame type in isolation;
-`test-showcase-v.json` / `test-showcase-h.json` run all 15 types in sequence
-in each orientation. `data.json` is a full worked example ("RAG for AI
-Agents", ~60s).
+`test-showcase-v.json` / `test-showcase-h.json` run the original 21 types in
+sequence in each orientation (`photo`/`photo-split` excepted — they need
+image generation); `test-showcase2-v.json` / `test-showcase2-h.json` run the
+10 token/embedding/graph types added after that, bookended by `cover`/`cta`.
+`data.json` is a full worked example ("RAG for AI Agents", ~60s).
 
 ## Orientation
 
@@ -31,10 +33,16 @@ Agents", ~60s).
 
 Every frame ships **two hand-tuned layouts**, switched by an `{{orientation}}`
 class on the clip root: vertical stacks, horizontal goes side-by-side. Frames
-that compute coordinates in JS (roadmap, vector-space, neural-net) derive them
-from `{{width}}`/`{{height}}` constants — nothing is pixel-baked to one canvas.
+that compute coordinates in JS (roadmap, vector-space, neural-net,
+knowledge-graph, agent-graph, vector-math, attention-arcs, tokenizer,
+context-window, next-token) derive them from `{{width}}`/`{{height}}`
+constants — nothing is pixel-baked to one canvas. A container that is itself
+`position:absolute` becomes the containing block for its own absolutely
+positioned children, so those coordinates must be local to *that container's*
+box (see `.plot` in `vector-space.html`, `.rig` in `knowledge-graph.html`),
+never canvas-absolute unless the container spans `inset:0`.
 
-## Frame types (21)
+## Frame types (33)
 
 | Type | Use for |
 |---|---|
@@ -59,6 +67,16 @@ from `{{width}}`/`{{height}}` constants — nothing is pixel-baked to one canvas
 | `memory` | SHORT-TERM vs LONG-TERM stores fill up, then items are recalled to the agent |
 | `reflection-loop` | self-check cycle ring: lap 1 fails ✗ at the Check node, lap 2 passes ✓ |
 | `mcp-hub` | agent → MCP socket → app chips snap in: one standard plug, many apps |
+| `tokenizer` | a phrase slams in merged, then splits into subword token chips with dashed dividers and IDs counting up |
+| `next-token` | autoregressive prediction: softmax bar chart of candidates, the winner flies up and appends to the sentence, 2-3 rounds |
+| `context-window` | fixed-capacity token track: tokens stream in from the right, oldest slide out the left once full, counter + limit badge |
+| `embedding-vector` | a text chip arrows into a heatmap row of dimension cells, with a dimension counter |
+| `similarity-score` | two text cards + a cosine gauge; the needle sweeps to a score past a threshold marker, snapping to accent on a match |
+| `chunking` | a document page fans into 3-4 overlapping chunk cards, with the shared overlap regions glowing |
+| `knowledge-graph` | entity nodes pop in, labeled relationship edges draw, then a multi-hop traversal path lights up |
+| `agent-graph` | fixed control-flow topology: START → step(s) → a conditional router → two branches → END, plus a retry loop; the router visibly flips |
+| `attention-arcs` | curved arcs between tokens on a line, thickness = attention weight, focus token glowing |
+| `vector-math` | an embedding analogy (king − man + woman ≈ queen) drawn as arrows in 2D space, landing on the result |
 
 Shared by every frame: `eyebrow`, `headline`/`title`, `bg`/`fg`/`accent`
 overrides, `captions[]` (synced to `captionTiming` when provided, evenly
@@ -84,6 +102,11 @@ enum carries a `typeUsage` guidance map). Machine-readable contract:
 - Deterministic only: no `Math.random`/`Date.now`, finite `repeat` counts,
   no DOM-measurement-driven layout (compute coordinates from
   `{{width}}`/`{{height}}` constants).
+- Any `position:absolute` element you build a sub-layout inside (a plot, a
+  rig, a track) becomes the containing block for its own `position:absolute`
+  children — their coordinates must be local to *that* element's box, never
+  canvas-absolute, unless the element itself is `inset:0`. Getting this wrong
+  doesn't error; it silently scatters children off-screen.
 - Rotated connector lines: set rotation via `gsap.set(el, {rotation, …})`,
   not an inline `transform` (a later GSAP transform tween replaces it).
 - Arrays/objects are injected into `<script>` as JSON literals

@@ -1,0 +1,15 @@
+{
+  "config": { "slug": "test-tech-chunking", "topic": "tech chunking test", "totalDuration": 6 },
+  "scenes": [{
+    "id": "s1", "type": "chunking", "start": 0, "duration": 6,
+    "title": "Cut it into **pieces**",
+    "filename": "handbook.pdf",
+    "items": [
+      "...refunds are processed within",
+      "processed within **five business days**",
+      "business days of the request being",
+      "the request being approved by staff..."
+    ],
+    "captions": ["It's split into", "**overlapping chunks**."]
+  }]
+}

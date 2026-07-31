@@ -22,13 +22,27 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("LANGFUSE_HOST", "LANGFUSE_BASE_URL"),
     )
 
-    llm_model: str = "gpt-4o-mini"
-    author_llm_model: str = "gpt-4o"
-    scenes_llm_model: str = "gpt-4o"
+    llm_model: str = "gpt-5.4-mini"
+    author_llm_model: str = "gpt-5.6-luna"
+    scenes_llm_model: str = "gpt-5.6-luna"
     # Narration + scene split run warm enough to write well, cool enough to
     # obey the verbatim-captions rule. At OpenAI's default (1.0) the model
     # paraphrases and silently drops clauses, which alignment then rejects.
+    # Applies ONLY to models that accept a temperature: the reasoning family
+    # (gpt-5, o-series) rejects any explicit value, so it is not sent to them
+    # and changing this has no effect on a gpt-5 run. See model_tuning_kwargs
+    # in app/llm/client.py.
     llm_temperature: float = 0.5
+    # Optional best-effort determinism, sent only alongside temperature (i.e.
+    # never to reasoning models, which don't accept it). None = not sent.
+    llm_seed: int | None = None
+    # How hard the reasoning family thinks, per model role. Authoring writes the
+    # actual scene content and is the quality bottleneck, so it gets the most;
+    # scene splitting groups sentences by index and needs less. Ignored by
+    # non-reasoning models, which reject the parameter.
+    llm_reasoning_effort: str = "medium"
+    author_llm_reasoning_effort: str = "high"
+    scenes_llm_reasoning_effort: str = "high"
     tts_model: str = "gpt-4o-mini-tts"
     tts_voice: str = "alloy"  # fallback voice for any language without a mapping
     transcribe_model: str = "whisper-1"

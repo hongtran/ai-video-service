@@ -46,6 +46,36 @@ class SubjectGuard(Protocol):
     async def check(self, query: str, subject: str) -> GuardResult: ...
 
 
+# Reasoning-family models accept only the provider default temperature (1.0) and
+# reject any explicit value with a 400 (code: unsupported_value); they take
+# reasoning_effort instead. Non-reasoning models are the mirror image — they
+# accept temperature and reject reasoning_effort. The two are mutually exclusive,
+# so one branch covers both and call sites can pass both values unconditionally.
+# `gpt-4o` starts with `gpt-4`, not `o`, so the o-series prefixes never catch it.
+_REASONING_MODEL_PREFIXES = ("gpt-5", "o1", "o3", "o4")
+
+
+def model_tuning_kwargs(
+    model: str,
+    *,
+    temperature: float | None = None,
+    reasoning_effort: str | None = None,
+    seed: int | None = None,
+) -> dict[str, object]:
+    """The tuning kwargs `model` actually accepts — reasoning_effort for the
+    reasoning family, temperature (and optionally seed) for everything else.
+    A None value is never sent, so a caller that wants the provider default for
+    one of them just omits it."""
+    if model.startswith(_REASONING_MODEL_PREFIXES):
+        return {"reasoning_effort": reasoning_effort} if reasoning_effort else {}
+    kwargs: dict[str, object] = {}
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+    if seed is not None:
+        kwargs["seed"] = seed
+    return kwargs
+
+
 async def with_retries(
     call: Callable[[], Awaitable[T]],
     *,
@@ -94,6 +124,13 @@ class LLMSubjectGuard:
                     {"role": "user", "content": query},
                 ],
                 response_format=GuardResult,
+                # A yes/no gate on every request — latency is the point, so it
+                # pins low effort rather than following the narration model's
+                # setting. Passes no temperature, exactly as before.
+                **model_tuning_kwargs(
+                    self._settings.llm_model,
+                    reasoning_effort="low",
+                ),
             )
             parsed = completion.choices[0].message.parsed
             if parsed is None:
@@ -213,8 +250,16 @@ class LLMScriptNormalizer:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": script},
                 ],
-                temperature=0.0,
                 response_format=ScriptNormalization,
+                # A mechanical reformat that must not vary: keeps its own 0.0
+                # rather than settings.llm_temperature, and pins minimal effort
+                # rather than following the narration model's setting.
+                **model_tuning_kwargs(
+                    self._settings.llm_model,
+                    temperature=0.0,
+                    reasoning_effort="low",
+                    seed=self._settings.llm_seed,
+                ),
             )
             parsed = completion.choices[0].message.parsed
             if parsed is None:

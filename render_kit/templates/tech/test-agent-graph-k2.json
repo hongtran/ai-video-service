@@ -1,0 +1,15 @@
+{
+  "config": { "slug": "test-tech-agent-graph-k2", "topic": "tech agent-graph k2 test", "totalDuration": 7 },
+  "scenes": [{
+    "id": "s1", "type": "agent-graph", "start": 0, "duration": 7,
+    "title": "It's not **one shot**",
+    "nodes": [
+      { "label": "Plan", "glyph": "🧭" },
+      { "label": "Reason", "glyph": "🤔" }
+    ],
+    "router": "need a tool?",
+    "branches": ["call tool", "answer"],
+    "retryLabel": "loop back",
+    "captions": ["Every step's a **checkpoint**,", "not a guess."]
+  }]
+}

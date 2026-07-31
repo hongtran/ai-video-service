@@ -20,7 +20,7 @@ from openai import AsyncOpenAI
 
 from app.config import Settings
 from app.languages import DEFAULT_LANGUAGE
-from app.llm.client import with_retries
+from app.llm.client import model_tuning_kwargs, with_retries
 from app.pipeline.steps import scene_split
 from app.pipeline.steps.segment import SceneIndex
 from app.subjects import SubjectConfig
@@ -170,7 +170,12 @@ async def author_batch(
                 model=settings.author_llm_model,
                 messages=messages,
                 response_format={"type": "json_object"},
-                temperature=settings.llm_temperature,
+                **model_tuning_kwargs(
+                    settings.author_llm_model,
+                    temperature=settings.llm_temperature,
+                    reasoning_effort=settings.author_llm_reasoning_effort,
+                    seed=settings.llm_seed,
+                ),
             )
             return completion.choices[0].message.content or ""
 

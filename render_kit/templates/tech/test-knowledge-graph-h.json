@@ -1,0 +1,66 @@
+{
+  "config": {
+    "slug": "test-tech-knowledge-graph-h",
+    "topic": "tech knowledge-graph test",
+    "totalDuration": 6,
+    "orientation": "horizontal"
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "type": "knowledge-graph",
+      "start": 0,
+      "duration": 6,
+      "title": "The company's **knowledge graph**",
+      "nodes": [
+        {
+          "label": "Acme Inc",
+          "glyph": "\ud83c\udfe2"
+        },
+        {
+          "label": "Jane Doe",
+          "glyph": "\ud83e\uddd1"
+        },
+        {
+          "label": "Berlin",
+          "glyph": "\ud83d\udccd"
+        },
+        {
+          "label": "Core Team",
+          "glyph": "\ud83d\udc65"
+        }
+      ],
+      "edges": [
+        {
+          "from": 0,
+          "to": 1,
+          "label": "founded_by"
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "label": "works_at"
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "label": "located_in"
+        },
+        {
+          "from": 2,
+          "to": 3,
+          "label": "based_in"
+        }
+      ],
+      "path": [
+        0,
+        1,
+        3
+      ],
+      "captions": [
+        "Every entity's a node,",
+        "and it's **all connected**."
+      ]
+    }
+  ]
+}
