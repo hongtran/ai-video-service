@@ -1,0 +1,224 @@
+<!doctype html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;800&display=swap");
+#root { position:absolute; inset:0; width:{{width}}px; height:{{height}}px; background:{{bg}}; color:{{fg}}; overflow:hidden; font-family:'Space Grotesk','Inter',sans-serif; }
+#main-clip.vertical   { --pad:84px;  --title-size:76px; --counter-size:38px; --badge-size:26px; --cap-size:58px; --cap-bottom:170px; --cap-maxw:100%; }
+#main-clip.horizontal { --pad:130px; --title-size:70px; --counter-size:34px; --badge-size:24px; --cap-size:44px; --cap-bottom:70px;  --cap-maxw:1180px; }
+
+.bg-fill { pointer-events:none; position:absolute; inset:0; background:{{bg}}; }
+.bg-grid { pointer-events:none; position:absolute; inset:-140px; opacity:.9;
+  background-image:radial-gradient(rgba(230,237,243,.08) 2px, transparent 2px);
+  background-size:54px 54px; }
+
+.title { position:absolute; z-index:2; left:var(--pad); right:var(--pad); font-weight:700; font-size:var(--title-size); line-height:1.05; letter-spacing:-1px; }
+#main-clip.vertical .title   { top:250px; text-align:center; }
+#main-clip.horizontal .title { top:120px; text-align:left; }
+
+.cw-meta { position:absolute; z-index:2; display:flex; align-items:center; gap:20px; }
+.cw-counter { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:var(--counter-size); }
+.cw-counter .used { color:{{accent}}; }
+.cw-badge { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:var(--badge-size); opacity:.6; border:1px solid rgba(230,237,243,.2); border-radius:999px; padding:6px 16px; }
+
+.cw-track { position:absolute; z-index:2; overflow:hidden; background:rgba(230,237,243,.04); border:2px solid rgba(230,237,243,.16); border-radius:20px; }
+.cw-chip { position:absolute; top:0; background:#161B22; border:2px solid rgba(230,237,243,.2); border-radius:12px; text-align:center; white-space:nowrap; font-family:'JetBrains Mono',monospace; font-weight:700; color:{{fg}}; }
+
+.caption-zone { position:absolute; bottom:var(--cap-bottom); left:0; right:0; display:flex; align-items:center; justify-content:center; z-index:5; }
+.caption { position:relative; width:calc(100% - 2*var(--pad)); max-width:var(--cap-maxw); height:2.4em; font-size:var(--cap-size); }
+.cap-chunk { position:absolute; width:100%; left:0; top:50%; transform:translateY(-50%); font-family:'Inter',sans-serif; font-weight:800; text-align:center; line-height:1.3; opacity:0; }
+.cap-chunk .cw { display:inline-block; white-space:pre; }
+.hl { padding:0 .12em; border-radius:10px; background:{{accent}}; color:{{bg}}; }
+</style>
+
+<div id="root" data-composition-id="{{id}}" data-width="{{width}}" data-height="{{height}}" data-duration="{{duration}}" data-start="0">
+  <section id="main-clip" class="clip main-clip {{orientation}}" data-start="0" data-duration="{{duration}}" data-track-index="1">
+    <div class="bg-fill"></div>
+    <div class="bg-grid"></div>
+    <div class="title">{{title}}</div>
+    <span class="limit-label-src" hidden>{{limitLabel}}</span>
+    <div class="cw-meta">
+      <div class="cw-counter"><span class="used">0</span>/<span class="lim"></span></div>
+      <div class="cw-badge" style="display:none"></div>
+    </div>
+    <div class="cw-track" data-layout-allow-overflow></div>
+    <div class="caption-zone"><div class="caption"></div></div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script>
+window.__timelines = window.__timelines || {};
+(function(){
+  var root = document.getElementById('root');
+  var W = {{width}}, H = {{height}};
+  var DUR = parseFloat('{{duration}}') || 4;
+  var VERT = '{{orientation}}' === 'vertical';
+  function $(s){ return root.querySelector(s); }
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function hl(t){ return esc(t).replace(/\*\*(.+?)\*\*/g,'<span class="hl">$1<\/span>'); }
+  function fitFont(chars, usableW, baseFs, adv, gutterEm){
+    return Math.max(18, Math.min(baseFs, Math.floor(usableW / (adv * chars + gutterEm))));
+  }
+
+  var titleEl = $('.title');
+  var tt = titleEl.textContent.trim();
+  if (!tt) titleEl.style.display = 'none'; else titleEl.innerHTML = hl(tt);
+
+  var TOKENS = {{tokens}};
+  var LIMIT = Math.max(3, Math.min(9, Math.round(Number('{{limit}}')) || 6));
+  var LIMIT_LABEL = $('.limit-label-src').textContent.trim();
+
+  var TRACK = VERT ? { x0:100, x1:980, y:900, h:110 } : { x0:200, x1:1720, y:560, h:96 };
+  var trackW = TRACK.x1 - TRACK.x0;
+  var slotW = trackW / LIMIT;
+  var gap = Math.round(slotW * 0.1);
+  var chipW = slotW - gap;
+  var chipH = TRACK.h - 20;
+
+  var maxChars = TOKENS.reduce(function(m, t){ return Math.max(m, String(t).length); }, 1);
+  var baseFs = VERT ? 34 : 30;
+  var fs = fitFont(maxChars, chipW, baseFs, 0.6, 1.0);
+
+  var trackEl = $('.cw-track');
+  trackEl.style.left = TRACK.x0 + 'px';
+  trackEl.style.top = (TRACK.y - TRACK.h / 2) + 'px';
+  trackEl.style.width = trackW + 'px';
+  trackEl.style.height = TRACK.h + 'px';
+
+  var metaEl = $('.cw-meta');
+  metaEl.style.left = TRACK.x0 + 'px';
+  metaEl.style.top = (TRACK.y - TRACK.h / 2 - 64) + 'px';
+  var limEl = $('.cw-counter .lim');
+  var usedEl = $('.cw-counter .used');
+  limEl.textContent = LIMIT;
+  var badgeEl = $('.cw-badge');
+  if (LIMIT_LABEL) { badgeEl.textContent = LIMIT_LABEL; badgeEl.style.display = ''; }
+
+  // `.cw-track` has `position:absolute` (with explicit, non-inset:0 bounds),
+  // which per CSS makes it the containing block for its OWN `position:
+  // absolute` children — so every chip coordinate below is LOCAL to the
+  // track's own box (origin 0,0 = the track's own top-left), never
+  // canvas-absolute. Same convention vector-space.html uses for its dots
+  // inside `.plot` (coordinates local to PW/PH, not the canvas).
+  function slotX(i){ return i * slotW + gap / 2; }
+
+  var tl = gsap.timeline({ paused:true });
+  tl.to($('.bg-grid'), { x:36, y:36, duration:DUR, ease:'none' }, 0);
+  tl.fromTo(titleEl, { opacity:0, y:-24 }, { opacity:1, y:0, duration:0.32, ease:'power3.out' }, 0.08);
+  // No entrance transform/opacity on the track itself: (1) a `transform`
+  // on trackEl would make it a new containing block for its `position:
+  // absolute` chip children, remapping their canvas-space `left` values to
+  // track-local space and scattering them off-screen; (2) fading its own
+  // opacity compounds with each chip's entrance opacity (effective
+  // visibility is the product of both), keeping the earliest chip below
+  // the inspector's ~0.2 visibility floor even after its own tween had
+  // started. The track is simply present from the start; the counter and
+  // streaming chips carry the entrance beat instead.
+  tl.fromTo(metaEl, { opacity:0, y:-10 }, { opacity:1, y:0, duration:0.25 }, 0.28);
+
+  // Starts as soon as the track itself is fading in: before any chip
+  // crosses the inspector's ~0.2-opacity visibility floor, the (currently
+  // fully-invisible) track is misidentified as the sole owner of every
+  // token's text and flagged as clipping itself — so the fix is the same
+  // one the authoring contract already calls for: keep something visible
+  // from ~0.25s.
+  var startAt = 0.2;
+  var stepGap = Math.max(0.28, Math.min(0.6, (DUR - startAt - 0.5) / Math.max(1, TOKENS.length)));
+  var stepDur = Math.min(0.36, stepGap * 0.8);
+  var queue = []; // currently visible chip records, index 0 = oldest
+
+  // Every chip's CSS `left` is pinned at creation to a legal in-track slot
+  // (its eventual resting position) so the track's own scrollWidth never
+  // grows beyond its box — `overflow:hidden` on an explicitly-sized element
+  // makes the inspector check that unconditionally, with no escape-hatch
+  // attribute. All motion — the off-track entrance, later slot shifts, and
+  // the off-track exit — rides on GSAP's `x` (a transform), which browsers
+  // exclude from scrollWidth entirely.
+  var enterFromX = trackW + slotW * 1.3; // local: past the track's own right edge
+  var exitToX = -slotW * 1.2;            // local: past the track's own left edge
+
+  TOKENS.forEach(function(tok, i){
+    var t0 = startAt + i * stepGap;
+    var full = queue.length >= LIMIT;
+    var targetIdx = full ? LIMIT - 1 : queue.length;
+    var anchorLeft = slotX(targetIdx);
+
+    var el = document.createElement('div');
+    el.className = 'cw-chip';
+    el.textContent = tok;
+    el.style.width = chipW + 'px';
+    el.style.height = chipH + 'px';
+    el.style.lineHeight = chipH + 'px';
+    el.style.fontSize = fs + 'px';
+    el.style.top = '10px'; // local: a small inset from the track's own top edge
+    el.style.left = anchorLeft + 'px'; // always a legal in-track position
+    trackEl.appendChild(el);
+    gsap.set(el, { x: enterFromX - anchorLeft, opacity: 0 });
+
+    if (full) {
+      var evict = queue.shift();
+      tl.to(evict.el, { x: exitToX - evict.anchorLeft, opacity:0, duration:stepDur, ease:'power2.in' }, t0);
+      queue.forEach(function(item, newIdx){
+        tl.to(item.el, { x: slotX(newIdx) - item.anchorLeft, duration:stepDur, ease:'power2.inOut' }, t0);
+      });
+      // The window edge flashes the moment eviction first starts.
+      if (i === LIMIT) {
+        tl.fromTo(trackEl, { boxShadow: '0 0 0 rgba(0,0,0,0)' }, { boxShadow: '0 0 34px {{accent}}99', duration:0.18, yoyo:true, repeat:1 }, t0);
+      }
+    }
+    tl.to(el, { x:0, opacity:1, duration:stepDur, ease:'power2.out' }, t0);
+    tl.set(usedEl, { textContent: Math.min(i + 1, LIMIT) }, t0 + stepDur * 0.6);
+    queue.push({ el: el, anchorLeft: anchorLeft });
+  });
+
+  // B-roll: once streaming settles, the track glows gently for the rest of
+  // the scene.
+  var idleAt = startAt + TOKENS.length * stepGap + 0.3;
+  var pulses = Math.max(1, Math.floor((DUR - idleAt) / 0.9));
+  tl.to(trackEl, { borderColor:'{{accent}}66', duration:0.45, ease:'sine.inOut', repeat:pulses * 2 - 1, yoyo:true }, idleAt);
+
+  var CT = {{captionTiming}};
+  var capHost = $('.caption');
+  var caps = (Array.isArray(CT) ? CT : []).map(function(c){
+    var d = document.createElement('div');
+    d.className = 'cap-chunk';
+    var ws = Array.isArray(c.words) ? c.words : [];
+    d.innerHTML = ws.length
+      ? ws.map(function(w){ return '<span class="cw">' + hl(w.text) + ' </span>'; }).join('')
+      : hl(c.text);
+    capHost.appendChild(d);
+    return d;
+  });
+  caps.forEach(function(el, i){
+    var t = CT[i]; if(!t) return;
+    if(i < caps.length - 1){
+      var nextStart = CT[i+1] ? CT[i+1].start : t.end;
+      var gap2 = Math.max(0.02, nextStart - t.start);
+      var fadeOutDur = Math.min(0.12, gap2);
+      var fadeInDur = Math.min(i===0?0.2:0.18, Math.max(0.01, gap2 - fadeOutDur));
+      tl.to(el, { opacity:1, duration:fadeInDur }, t.start);
+      tl.to(el, { opacity:0, duration:fadeOutDur }, nextStart - fadeOutDur);
+    } else {
+      tl.to(el, { opacity:1, duration:i===0?0.2:0.18 }, t.start);
+    }
+    // Karaoke: only the word being spoken holds the highlight color; every
+    // other word keeps the normal caption color. Emphasis pills (.hl) opt out.
+    var ws = Array.isArray(t.words) ? t.words : [];
+    var spans = el.querySelectorAll('.cw');
+    ws.forEach(function(w, wi){
+      var span = spans[wi]; if(!span || span.querySelector('.hl')) return;
+      tl.to(span, { color:'{{capHighlight}}', duration:0.12, ease:'power2.out' }, w.start);
+      tl.to(span, { color:'{{fg}}', duration:0.15 }, Math.max(w.start + 0.12, w.end));
+    });
+  });
+
+  window.__timelines['{{id}}'] = tl;
+})();
+</script>
+</template>
+</body>
+</html>
+</content>

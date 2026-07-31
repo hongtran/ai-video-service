@@ -1,0 +1,27 @@
+{
+  "config": {
+    "slug": "test-tech-similarity-score-h",
+    "topic": "tech similarity-score test",
+    "totalDuration": 6,
+    "orientation": "horizontal"
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "type": "similarity-score",
+      "start": 0,
+      "duration": 6,
+      "title": "How **close** are these?",
+      "phrases": [
+        "refund policy",
+        "how do I return this?"
+      ],
+      "score": 0.87,
+      "threshold": 0.75,
+      "captions": [
+        "It's not exact words \u2014",
+        "it's **meaning**."
+      ]
+    }
+  ]
+}

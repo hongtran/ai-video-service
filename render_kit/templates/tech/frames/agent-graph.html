@@ -1,0 +1,321 @@
+<!doctype html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;800&display=swap");
+#root { position:absolute; inset:0; width:{{width}}px; height:{{height}}px; background:{{bg}}; color:{{fg}}; overflow:hidden; font-family:'Space Grotesk','Inter',sans-serif; }
+#main-clip.vertical   { --pad:84px;  --title-size:76px; --node-label:26px; --step-label:28px; --edge-label:20px; --cap-size:58px; --cap-bottom:170px; --cap-maxw:100%; }
+#main-clip.horizontal { --pad:130px; --title-size:70px; --node-label:24px; --step-label:26px; --edge-label:19px; --cap-size:44px; --cap-bottom:70px;  --cap-maxw:1180px; }
+
+.bg-fill { pointer-events:none; position:absolute; inset:0; background:{{bg}}; }
+.bg-grid { pointer-events:none; position:absolute; inset:-140px; opacity:.9;
+  background-image:radial-gradient(rgba(230,237,243,.08) 2px, transparent 2px);
+  background-size:54px 54px; }
+
+.title { position:absolute; z-index:2; left:var(--pad); right:var(--pad); font-weight:700; font-size:var(--title-size); line-height:1.05; letter-spacing:-1px; }
+#main-clip.vertical .title   { top:250px; text-align:center; }
+#main-clip.horizontal .title { top:120px; text-align:left; }
+
+.rig { position:absolute; z-index:2; inset:0; }
+.ag-edge { position:absolute; height:4px; margin-top:-2px; border-radius:2px; background:rgba(230,237,243,.18); transform-origin:left center; }
+.ag-seg { position:absolute; background:rgba(230,237,243,.18); border-radius:2px; }
+.ag-endcap { position:absolute; width:10px; height:10px; margin:-5px 0 0 -5px; border-radius:50%; background:rgba(230,237,243,.35); }
+
+.ag-pill { position:absolute; z-index:3; background:#161B22; border:2px solid rgba(230,237,243,.2); border-radius:999px; padding:12px 22px; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:var(--node-label); white-space:nowrap; box-shadow:0 10px 26px rgba(0,0,0,.35); }
+.ag-step { position:absolute; z-index:3; background:#161B22; border:2px solid rgba(230,237,243,.2); border-radius:16px; padding:14px 22px; text-align:center; white-space:nowrap; box-shadow:0 12px 30px rgba(0,0,0,.35); }
+.ag-step-glyph { font-size:28px; line-height:1.1; margin-bottom:2px; }
+.ag-step-label { font-weight:700; font-size:var(--step-label); line-height:1.1; }
+.ag-branch { position:absolute; z-index:3; background:#161B22; border:2px solid {{accent}}; border-radius:14px; padding:12px 20px; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:var(--node-label); color:{{accent}}; white-space:nowrap; box-shadow:0 10px 26px rgba(0,0,0,.35); }
+
+.ag-router-shape { position:absolute; z-index:3; width:64px; height:64px; margin:-32px 0 0 -32px; background:#161B22; border:2px solid rgba(230,237,243,.3); }
+.ag-router-shape.flip { border-color:{{accent}}; }
+.ag-router-label { position:absolute; z-index:4; background:{{bg}}; border:1px solid rgba(230,237,243,.2); border-radius:999px; padding:8px 18px; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:var(--edge-label); white-space:nowrap; }
+
+.ag-retry-label { position:absolute; z-index:3; background:{{bg}}; border:1px solid rgba(230,237,243,.2); border-radius:999px; padding:6px 16px; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:var(--edge-label); opacity:.7; white-space:nowrap; }
+
+.ag-runner { position:absolute; z-index:2; width:24px; height:24px; margin:-12px 0 0 -12px; border-radius:50%; background:{{accent}}; box-shadow:0 0 26px {{accent}}; opacity:0; }
+
+.caption-zone { position:absolute; bottom:var(--cap-bottom); left:0; right:0; display:flex; align-items:center; justify-content:center; z-index:5; }
+.caption { position:relative; width:calc(100% - 2*var(--pad)); max-width:var(--cap-maxw); height:2.4em; font-size:var(--cap-size); }
+.cap-chunk { position:absolute; width:100%; left:0; top:50%; transform:translateY(-50%); font-family:'Inter',sans-serif; font-weight:800; text-align:center; line-height:1.3; opacity:0; }
+.cap-chunk .cw { display:inline-block; white-space:pre; }
+.hl { padding:0 .12em; border-radius:10px; background:{{accent}}; color:{{bg}}; }
+</style>
+
+<div id="root" data-composition-id="{{id}}" data-width="{{width}}" data-height="{{height}}" data-duration="{{duration}}" data-start="0">
+  <section id="main-clip" class="clip main-clip {{orientation}}" data-start="0" data-duration="{{duration}}" data-track-index="1">
+    <div class="bg-fill"></div>
+    <div class="bg-grid"></div>
+    <div class="title">{{title}}</div>
+    <span class="router-src" hidden>{{router}}</span>
+    <span class="retry-src" hidden>{{retryLabel}}</span>
+    <div class="rig"></div>
+    <div class="caption-zone"><div class="caption"></div></div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script>
+window.__timelines = window.__timelines || {};
+(function(){
+  var root = document.getElementById('root');
+  var DUR = parseFloat('{{duration}}') || 4;
+  var VERT = '{{orientation}}' === 'vertical';
+  function $(s){ return root.querySelector(s); }
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function hl(t){ return esc(t).replace(/\*\*(.+?)\*\*/g,'<span class="hl">$1<\/span>'); }
+
+  var titleEl = $('.title');
+  var tt = titleEl.textContent.trim();
+  if (!tt) titleEl.style.display = 'none'; else titleEl.innerHTML = hl(tt);
+
+  // Fixed topology, deterministic stage box (same envelope knowledge-graph
+  // uses) — only the slot table depends on how many pre-router steps exist.
+  var BOX = VERT ? { x0:120, y0:470, x1:960, y1:1500 } : { x0:300, y0:300, x1:1620, y1:870 };
+  var BW = BOX.x1 - BOX.x0, BH = BOX.y1 - BOX.y0;
+  function P(fx, fy){ return { x: BOX.x0 + fx * BW, y: BOX.y0 + fy * BH }; }
+
+  var STEPS = {{nodes}}.slice(0, 2);
+  var k = STEPS.length;
+
+  var SLOTS_V = {
+    2: { start:P(0.50,0.03), step:[P(0.50,0.20),P(0.50,0.36)], router:P(0.50,0.54), a:P(0.22,0.74), b:P(0.78,0.74), end:P(0.50,0.95) },
+    1: { start:P(0.50,0.04), step:[P(0.50,0.24)],              router:P(0.50,0.50), a:P(0.22,0.72), b:P(0.78,0.72), end:P(0.50,0.94) },
+    0: { start:P(0.50,0.06), step:[],                          router:P(0.50,0.42), a:P(0.22,0.68), b:P(0.78,0.68), end:P(0.50,0.92) }
+  };
+  var SLOTS_H = {
+    2: { start:P(0.04,0.50), step:[P(0.24,0.50),P(0.42,0.50)], router:P(0.58,0.50), a:P(0.78,0.18), b:P(0.78,0.82), end:P(0.96,0.50) },
+    1: { start:P(0.04,0.50), step:[P(0.28,0.50)],              router:P(0.54,0.50), a:P(0.76,0.20), b:P(0.76,0.80), end:P(0.96,0.50) },
+    0: { start:P(0.06,0.50), step:[],                          router:P(0.40,0.50), a:P(0.70,0.22), b:P(0.70,0.78), end:P(0.94,0.50) }
+  };
+  var SLOTS = (VERT ? SLOTS_V : SLOTS_H)[k];
+  var chainStart = SLOTS.step.length ? SLOTS.step[0] : SLOTS.start; // where the retry edge lands
+
+  var BRANCHES = {{branches}};
+  var branchA = BRANCHES[0] || '';
+  var branchB = BRANCHES[1] || '';
+  var ROUTER_TXT = $('.router-src').textContent.trim();
+  var RETRY_TXT = $('.retry-src').textContent.trim() || 'retry';
+
+  var rig = $('.rig');
+
+  function rotatedEdge(p, q, cls){
+    var dx = q.x - p.x, dy = q.y - p.y;
+    var len = Math.sqrt(dx*dx + dy*dy) || 1;
+    var ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    var el = document.createElement('div');
+    el.className = cls || 'ag-edge';
+    el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; el.style.width = len + 'px';
+    rig.appendChild(el);
+    gsap.set(el, { rotation: ang, scaleX: 0, transformOrigin: 'left center' });
+    return el;
+  }
+  // Axis-aligned segment (no rotation) for the orthogonal retry polyline.
+  function orthoSeg(p, q){
+    var el = document.createElement('div');
+    el.className = 'ag-seg';
+    if (Math.abs(p.x - q.x) < 0.5) { // vertical
+      el.style.left = (p.x - 2) + 'px'; el.style.width = '4px';
+      el.style.top = Math.min(p.y, q.y) + 'px'; el.style.height = Math.abs(q.y - p.y) + 'px';
+      gsap.set(el, { scaleY: 0, transformOrigin: p.y < q.y ? 'top center' : 'bottom center' });
+    } else { // horizontal
+      el.style.top = (p.y - 2) + 'px'; el.style.height = '4px';
+      el.style.left = Math.min(p.x, q.x) + 'px'; el.style.width = Math.abs(q.x - p.x) + 'px';
+      gsap.set(el, { scaleX: 0, transformOrigin: p.x < q.x ? 'left center' : 'right center' });
+    }
+    rig.appendChild(el);
+    return el;
+  }
+  function labelPill(p, q, cls, text){
+    var mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+    var dx = q.x - p.x, dy = q.y - p.y, len = Math.sqrt(dx*dx + dy*dy) || 1;
+    var nx = -dy / len, ny = dx / len;
+    var el = document.createElement('div');
+    el.className = cls;
+    el.textContent = text;
+    el.style.left = (mx + nx * 24) + 'px'; el.style.top = (my + ny * 24) + 'px';
+    gsap.set(el, { xPercent:-50, yPercent:-50, opacity:0 });
+    rig.appendChild(el);
+    return el;
+  }
+
+  // Forward edges first (beneath nodes), in DOM/paint order.
+  var edgeChain = [SLOTS.start].concat(SLOTS.step).concat([SLOTS.router]);
+  var fwdEdges = [];
+  for (var i = 0; i < edgeChain.length - 1; i++) fwdEdges.push(rotatedEdge(edgeChain[i], edgeChain[i+1]));
+  var edgeRA = rotatedEdge(SLOTS.router, SLOTS.a);
+  var edgeRB = rotatedEdge(SLOTS.router, SLOTS.b);
+  var edgeAEnd = rotatedEdge(SLOTS.a, SLOTS.end);
+  var edgeBEnd = rotatedEdge(SLOTS.b, SLOTS.end);
+
+  // Retry cycle: an orthogonal polyline out to a gutter and back into the
+  // chain start — no rotation, no curve math. It departs from `dep`, offset
+  // clear of branch A's own card first, rather than from A's exact center —
+  // otherwise the label (and the edge itself) sit under the card's footprint.
+  var dep = VERT
+    ? { x: SLOTS.a.x, y: SLOTS.a.y + 80 }
+    : { x: SLOTS.a.x + 80, y: SLOTS.a.y };
+  var gutter = VERT
+    ? { x: BOX.x0 - 40, y: dep.y }
+    : { x: dep.x, y: BOX.y0 - 40 };
+  var gutterAtStart = VERT
+    ? { x: BOX.x0 - 40, y: chainStart.y }
+    : { x: chainStart.x, y: BOX.y0 - 40 };
+  var retrySegs = [
+    orthoSeg(SLOTS.a, dep),
+    orthoSeg(dep, gutter),
+    orthoSeg(gutter, gutterAtStart),
+    orthoSeg(gutterAtStart, chainStart),
+  ];
+  var retryLabelEl = labelPill(dep, gutter, 'ag-retry-label', RETRY_TXT);
+
+  // Nodes on top of edges.
+  function pill(p, text){
+    var el = document.createElement('div');
+    el.className = 'ag-pill';
+    el.textContent = text;
+    el.style.left = p.x + 'px'; el.style.top = p.y + 'px';
+    gsap.set(el, { xPercent:-50, yPercent:-50, opacity:0, scale:0.6 });
+    rig.appendChild(el);
+    return el;
+  }
+  var startEl = pill(SLOTS.start, 'START');
+  var endEl = pill(SLOTS.end, 'END');
+  var stepEls = STEPS.map(function(s, i){
+    var el = document.createElement('div');
+    el.className = 'ag-step';
+    el.innerHTML = (s.glyph ? '<div class="ag-step-glyph">' + esc(s.glyph) + '<\/div>' : '') +
+      '<div class="ag-step-label">' + hl(s.label || '') + '<\/div>';
+    el.style.left = SLOTS.step[i].x + 'px'; el.style.top = SLOTS.step[i].y + 'px';
+    gsap.set(el, { xPercent:-50, yPercent:-50, opacity:0, scale:0.6 });
+    rig.appendChild(el);
+    return el;
+  });
+  var branchAEl = document.createElement('div');
+  branchAEl.className = 'ag-branch'; branchAEl.textContent = branchA;
+  branchAEl.style.left = SLOTS.a.x + 'px'; branchAEl.style.top = SLOTS.a.y + 'px';
+  gsap.set(branchAEl, { xPercent:-50, yPercent:-50, opacity:0, scale:0.6 });
+  rig.appendChild(branchAEl);
+  var branchBEl = document.createElement('div');
+  branchBEl.className = 'ag-branch'; branchBEl.textContent = branchB;
+  branchBEl.style.left = SLOTS.b.x + 'px'; branchBEl.style.top = SLOTS.b.y + 'px';
+  gsap.set(branchBEl, { xPercent:-50, yPercent:-50, opacity:0, scale:0.6 });
+  rig.appendChild(branchBEl);
+
+  // Router: a rotated square with NO text, plus a sibling un-rotated label
+  // at the same center. Rotating a text box is what balloons its bounding
+  // rect and swallows neighbors — this keeps rotation purely decorative.
+  var routerShape = document.createElement('div');
+  routerShape.className = 'ag-router-shape';
+  routerShape.style.left = SLOTS.router.x + 'px'; routerShape.style.top = SLOTS.router.y + 'px';
+  gsap.set(routerShape, { rotation: 45, opacity: 0 });
+  rig.appendChild(routerShape);
+  var routerLabel = document.createElement('div');
+  routerLabel.className = 'ag-router-label';
+  routerLabel.textContent = ROUTER_TXT;
+  routerLabel.style.left = SLOTS.router.x + 'px'; routerLabel.style.top = (SLOTS.router.y + 56) + 'px';
+  gsap.set(routerLabel, { xPercent:-50, yPercent:-50, opacity:0 });
+  rig.appendChild(routerLabel);
+
+  // Runner travels beneath the nodes (inserted before the first node),
+  // above the edges — matching the DOM-order rule proven in knowledge-graph.
+  var runner = document.createElement('div');
+  runner.className = 'ag-runner';
+  runner.style.left = SLOTS.start.x + 'px'; runner.style.top = SLOTS.start.y + 'px';
+  rig.insertBefore(runner, startEl);
+
+  var tl = gsap.timeline({ paused:true });
+  tl.to($('.bg-grid'), { x:36, y:36, duration:DUR, ease:'none' }, 0);
+  tl.fromTo(titleEl, { opacity:0, y:-24 }, { opacity:1, y:0, duration:0.32, ease:'power3.out' }, 0.08);
+
+  // The graph draws: edges first, then nodes pop along the chain.
+  var drawAt = 0.2;
+  var allEdges = fwdEdges.concat([edgeRA, edgeRB, edgeAEnd, edgeBEnd]);
+  var edgeSpan = Math.min(1.0, Math.max(0.5, allEdges.length * 0.09));
+  var edgePer = edgeSpan / Math.max(1, allEdges.length);
+  allEdges.forEach(function(e, i){ tl.to(e, { scaleX:1, duration:0.22, ease:'power2.out' }, drawAt + i * edgePer); });
+  retrySegs.forEach(function(s, i){ tl.to(s, { scaleX:1, scaleY:1, duration:0.18, ease:'power2.out' }, drawAt + edgeSpan + i * 0.1); });
+
+  var nodesAt = drawAt + edgeSpan + 0.35;
+  var nodeSeq = [startEl].concat(stepEls);
+  nodeSeq.forEach(function(el, i){
+    tl.to(el, { opacity:1, scale:1, duration:0.26, ease:'back.out(1.9)' }, nodesAt + i * 0.14);
+  });
+  var routerAt = nodesAt + nodeSeq.length * 0.14 + 0.1;
+  tl.to(routerShape, { opacity:1, duration:0.22, ease:'power2.out' }, routerAt);
+  tl.to(routerLabel, { opacity:1, duration:0.22, ease:'power2.out' }, routerAt + 0.05);
+  tl.to([branchAEl, branchBEl, endEl], { opacity:1, scale:1, duration:0.24, ease:'back.out(1.8)', stagger:0.08 }, routerAt + 0.3);
+  tl.to(retryLabelEl, { opacity:0.8, duration:0.2 }, routerAt + 0.5);
+
+  // The token travels: first lap takes branch A and loops back on retry
+  // (router shown mid-decision), second lap flips to branch B and reaches
+  // END — the router's border visibly flips accent when it commits.
+  var travelAt = routerAt + 0.7;
+  var hop = 0.4;
+  tl.fromTo(runner, { opacity:0 }, { opacity:1, duration:0.15 }, travelAt);
+  var base = SLOTS.start;
+  function moveTo(p, at, dur){ tl.to(runner, { x: p.x - base.x, y: p.y - base.y, duration: dur || hop, ease:'none' }, at); }
+  var t = travelAt;
+  [SLOTS.start].concat(SLOTS.step).forEach(function(p, i){ if (i>0){ moveTo(p, t); t += hop; } });
+  moveTo(SLOTS.router, t); t += hop;
+  tl.to(routerShape, { rotation:135, duration:0.16 }, t).to(routerShape, { rotation:45, duration:0.16 }, t + 0.16);
+  moveTo(SLOTS.a, t); t += hop;
+  moveTo(dep, t, hop * 0.3); t += hop * 0.3;
+  moveTo(gutter, t, hop * 0.6); t += hop * 0.6;
+  moveTo(gutterAtStart, t, hop * 0.6); t += hop * 0.6;
+  moveTo(chainStart, t); t += hop + 0.15;
+  [SLOTS.start].concat(SLOTS.step).forEach(function(p, i){ if (i>0){ moveTo(p, t); t += hop; } });
+  moveTo(SLOTS.router, t); t += hop;
+  tl.fromTo(routerShape, { rotation:45 }, { rotation:-45, duration:0.16, className:'+=flip' }, t)
+    .to(routerShape, { rotation:45, duration:0.16 }, t + 0.16);
+  moveTo(SLOTS.b, t); t += hop;
+  moveTo(SLOTS.end, t); t += hop;
+  tl.to(runner, { opacity:0, scale:1.5, duration:0.2 }, t);
+
+  // B-roll: END glows for the remainder.
+  var idleAt = t + 0.3;
+  var pulses = Math.max(1, Math.floor((DUR - idleAt) / 0.8));
+  tl.to(endEl, { scale:1.08, duration:0.4, ease:'sine.inOut', repeat:pulses * 2 - 1, yoyo:true }, idleAt);
+
+  var CT = {{captionTiming}};
+  var capHost = $('.caption');
+  var caps = (Array.isArray(CT) ? CT : []).map(function(c){
+    var d = document.createElement('div');
+    d.className = 'cap-chunk';
+    var ws = Array.isArray(c.words) ? c.words : [];
+    d.innerHTML = ws.length
+      ? ws.map(function(w){ return '<span class="cw">' + hl(w.text) + ' </span>'; }).join('')
+      : hl(c.text);
+    capHost.appendChild(d);
+    return d;
+  });
+  caps.forEach(function(el, i){
+    var t2 = CT[i]; if(!t2) return;
+    if(i < caps.length - 1){
+      var nextStart = CT[i+1] ? CT[i+1].start : t2.end;
+      var gap = Math.max(0.02, nextStart - t2.start);
+      var fadeOutDur = Math.min(0.12, gap);
+      var fadeInDur = Math.min(i===0?0.2:0.18, Math.max(0.01, gap - fadeOutDur));
+      tl.to(el, { opacity:1, duration:fadeInDur }, t2.start);
+      tl.to(el, { opacity:0, duration:fadeOutDur }, nextStart - fadeOutDur);
+    } else {
+      tl.to(el, { opacity:1, duration:i===0?0.2:0.18 }, t2.start);
+    }
+    var ws = Array.isArray(t2.words) ? t2.words : [];
+    var spans = el.querySelectorAll('.cw');
+    ws.forEach(function(w, wi){
+      var span = spans[wi]; if(!span || span.querySelector('.hl')) return;
+      tl.to(span, { color:'{{capHighlight}}', duration:0.12, ease:'power2.out' }, w.start);
+      tl.to(span, { color:'{{fg}}', duration:0.15 }, Math.max(w.start + 0.12, w.end));
+    });
+  });
+
+  window.__timelines['{{id}}'] = tl;
+})();
+</script>
+</template>
+</body>
+</html>
+</content>

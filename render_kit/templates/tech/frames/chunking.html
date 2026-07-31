@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body>
+<template>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;800&display=swap");
+#root { position:absolute; inset:0; width:{{width}}px; height:{{height}}px; background:{{bg}}; color:{{fg}}; overflow:hidden; font-family:'Space Grotesk','Inter',sans-serif; }
+#main-clip.vertical   { --pad:84px;  --title-size:76px; --doc-size:32px; --item-size:36px; --cap-size:58px; --cap-bottom:170px; --cap-maxw:100%; }
+#main-clip.horizontal { --pad:130px; --title-size:70px; --doc-size:30px; --item-size:32px; --cap-size:44px; --cap-bottom:70px;  --cap-maxw:1180px; }
+
+.bg-fill { pointer-events:none; position:absolute; inset:0; background:{{bg}}; }
+.bg-grid { pointer-events:none; position:absolute; inset:-140px; opacity:.9;
+  background-image:radial-gradient(rgba(230,237,243,.08) 2px, transparent 2px);
+  background-size:54px 54px; }
+
+.title { position:absolute; z-index:2; left:var(--pad); right:var(--pad); font-weight:700; font-size:var(--title-size); line-height:1.05; letter-spacing:-1px; }
+#main-clip.vertical .title   { top:250px; text-align:center; }
+#main-clip.horizontal .title { top:120px; text-align:left; }
+
+.ck-doc { position:absolute; z-index:2; left:var(--pad); display:flex; align-items:center; gap:14px; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:var(--doc-size); opacity:.6; }
+#main-clip.vertical .ck-doc   { top:415px; }
+#main-clip.horizontal .ck-doc { top:280px; }
+.ck-doc-dot { width:12px; height:12px; border-radius:3px; background:{{accent}}; flex:0 0 auto; }
+
+.ck-stack { position:absolute; inset:0; z-index:2; }
+.ck-glow { position:absolute; left:var(--pad); right:var(--pad); border-radius:14px; background:{{accent}}; opacity:0; filter:blur(2px); }
+.ck-card { position:absolute; left:var(--pad); right:var(--pad); background:#161B22; border:2px solid rgba(230,237,243,.2); border-radius:18px; box-shadow:0 16px 40px rgba(0,0,0,.4); overflow:hidden; }
+.ck-card-text { position:absolute; left:30px; right:30px; top:26px; font-family:'Inter',sans-serif; font-weight:700; font-size:var(--item-size); line-height:1.3; }
+
+.caption-zone { position:absolute; bottom:var(--cap-bottom); left:0; right:0; display:flex; align-items:center; justify-content:center; z-index:5; }
+.caption { position:relative; width:calc(100% - 2*var(--pad)); max-width:var(--cap-maxw); height:2.4em; font-size:var(--cap-size); }
+.cap-chunk { position:absolute; width:100%; left:0; top:50%; transform:translateY(-50%); font-family:'Inter',sans-serif; font-weight:800; text-align:center; line-height:1.3; opacity:0; }
+.cap-chunk .cw { display:inline-block; white-space:pre; }
+.hl { padding:0 .12em; border-radius:10px; background:{{accent}}; color:{{bg}}; }
+</style>
+
+<div id="root" data-composition-id="{{id}}" data-width="{{width}}" data-height="{{height}}" data-duration="{{duration}}" data-start="0">
+  <section id="main-clip" class="clip main-clip {{orientation}}" data-start="0" data-duration="{{duration}}" data-track-index="1">
+    <div class="bg-fill"></div>
+    <div class="bg-grid"></div>
+    <div class="title">{{title}}</div>
+    <span class="filename-src" hidden>{{filename}}</span>
+    <div class="ck-doc"><span class="ck-doc-dot"></span><span class="ck-doc-name"></span></div>
+    <div class="ck-stack"></div>
+    <div class="caption-zone"><div class="caption"></div></div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script>
+window.__timelines = window.__timelines || {};
+(function(){
+  var root = document.getElementById('root');
+  var DUR = parseFloat('{{duration}}') || 4;
+  var VERT = '{{orientation}}' === 'vertical';
+  function $(s){ return root.querySelector(s); }
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function hl(t){ return esc(t).replace(/\*\*(.+?)\*\*/g,'<span class="hl">$1<\/span>'); }
+  // Re-mark multi-word **emphasis** per-word before wrapping: a chip that
+  // wraps across lines has a union bounding rect that can swallow the
+  // neighboring (overlapping) card — the same rule captions already follow.
+  function splitMarks(t){ return String(t).replace(/\*\*(.+?)\*\*/g, function(_m, inner){
+    return inner.split(/\s+/).map(function(w){ return '**' + w + '**'; }).join(' ');
+  }); }
+
+  var titleEl = $('.title');
+  var tt = titleEl.textContent.trim();
+  if (!tt) titleEl.style.display = 'none'; else titleEl.innerHTML = hl(tt);
+
+  var FILENAME = $('.filename-src').textContent.trim();
+  var docEl = $('.ck-doc');
+  if (FILENAME) $('.ck-doc-name').textContent = FILENAME; else docEl.style.display = 'none';
+
+  var ITEMS = {{items}};
+  var n = Math.max(1, Math.min(4, ITEMS.length));
+  var ITEMS_USED = ITEMS.slice(0, n);
+
+  // Deterministic cascade: each card overlaps the one before it by a fixed
+  // band. Text is inset far enough from each card's own bottom edge that
+  // it never sits under the overlap band the NEXT card paints on top of.
+  var cardH = VERT ? 150 : 128;
+  var stagger = VERT ? 95 : 82;      // vertical distance between card tops
+  var overlap = cardH - stagger;      // the band the next card covers
+  var top0 = VERT ? 560 : 355;
+
+  var stack = $('.ck-stack');
+  var glows = [];
+  for (var g = 0; g < n - 1; g++) {
+    // The overlap band sits at [card_g's bottom edge - overlap, card_g's bottom edge].
+    var glowTop = top0 + g * stagger + cardH - overlap;
+    var el = document.createElement('div');
+    el.className = 'ck-glow';
+    el.style.top = glowTop + 'px';
+    el.style.height = overlap + 'px';
+    stack.appendChild(el);
+    glows.push(el);
+  }
+
+  var cards = ITEMS_USED.map(function(text, i){
+    var el = document.createElement('div');
+    el.className = 'ck-card';
+    el.style.top = (top0 + i * stagger) + 'px';
+    el.style.height = cardH + 'px';
+    var textEl = document.createElement('div');
+    textEl.className = 'ck-card-text';
+    textEl.innerHTML = hl(splitMarks(text));
+    el.appendChild(textEl);
+    stack.appendChild(el);
+    return el;
+  });
+
+  var tl = gsap.timeline({ paused:true });
+  tl.to($('.bg-grid'), { x:36, y:36, duration:DUR, ease:'none' }, 0);
+  tl.fromTo(titleEl, { opacity:0, y:-24 }, { opacity:1, y:0, duration:0.32, ease:'power3.out' }, 0.08);
+  if (docEl.style.display !== 'none') tl.fromTo(docEl, { opacity:0, y:-10 }, { opacity:1, y:0, duration:0.25 }, 0.22);
+
+  // Each card fans in AT its own resting slot (a small y/scale pop), never
+  // from a fully stacked start — starting all cards coincident would mean
+  // their FULL text overlaps during the transition, not just the intended
+  // overlap band, which is a real (not falsely-flagged) occlusion.
+  var fanAt = 0.4;
+  var fanSpan = Math.min(DUR * 0.35, Math.max(0.7, n * 0.22));
+  var fanPer = fanSpan / Math.max(1, n);
+  cards.forEach(function(card, i){
+    tl.fromTo(card, { opacity:0, y:-14, scale:0.95 }, { opacity:1, y:0, scale:1, duration:0.34, ease:'power2.out' }, fanAt + i * fanPer);
+  });
+
+  // Overlap bands glow in once the cards have settled.
+  var glowAt = fanAt + fanSpan + 0.15;
+  glows.forEach(function(g, i){
+    tl.fromTo(g, { opacity:0 }, { opacity:0.5, duration:0.3, ease:'power2.out' }, glowAt + i * 0.1);
+  });
+
+  // B-roll: overlap bands breathe for the remainder of the scene.
+  var idleAt = glowAt + glows.length * 0.1 + 0.3;
+  var pulses = Math.max(1, Math.floor((DUR - idleAt) / 0.9));
+  if (glows.length) tl.to(glows, { opacity:0.22, duration:0.45, ease:'sine.inOut', repeat:pulses * 2 - 1, yoyo:true, stagger:0.05 }, idleAt);
+
+  var CT = {{captionTiming}};
+  var capHost = $('.caption');
+  var caps = (Array.isArray(CT) ? CT : []).map(function(c){
+    var d = document.createElement('div');
+    d.className = 'cap-chunk';
+    var ws = Array.isArray(c.words) ? c.words : [];
+    d.innerHTML = ws.length
+      ? ws.map(function(w){ return '<span class="cw">' + hl(w.text) + ' </span>'; }).join('')
+      : hl(c.text);
+    capHost.appendChild(d);
+    return d;
+  });
+  caps.forEach(function(el, i){
+    var t = CT[i]; if(!t) return;
+    if(i < caps.length - 1){
+      var nextStart = CT[i+1] ? CT[i+1].start : t.end;
+      var gap = Math.max(0.02, nextStart - t.start);
+      var fadeOutDur = Math.min(0.12, gap);
+      var fadeInDur = Math.min(i===0?0.2:0.18, Math.max(0.01, gap - fadeOutDur));
+      tl.to(el, { opacity:1, duration:fadeInDur }, t.start);
+      tl.to(el, { opacity:0, duration:fadeOutDur }, nextStart - fadeOutDur);
+    } else {
+      tl.to(el, { opacity:1, duration:i===0?0.2:0.18 }, t.start);
+    }
+    // Karaoke: only the word being spoken holds the highlight color; every
+    // other word keeps the normal caption color. Emphasis pills (.hl) opt out.
+    var ws = Array.isArray(t.words) ? t.words : [];
+    var spans = el.querySelectorAll('.cw');
+    ws.forEach(function(w, wi){
+      var span = spans[wi]; if(!span || span.querySelector('.hl')) return;
+      tl.to(span, { color:'{{capHighlight}}', duration:0.12, ease:'power2.out' }, w.start);
+      tl.to(span, { color:'{{fg}}', duration:0.15 }, Math.max(w.start + 0.12, w.end));
+    });
+  });
+
+  window.__timelines['{{id}}'] = tl;
+})();
+</script>
+</template>
+</body>
+</html>
+</content>

@@ -1,0 +1,44 @@
+{
+  "config": {
+    "slug": "test-tech-next-token-h",
+    "topic": "tech next-token test",
+    "totalDuration": 6,
+    "orientation": "horizontal"
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "type": "next-token",
+      "start": 0,
+      "duration": 6,
+      "title": "It's just **guessing**",
+      "sentence": "The cat sat on the ___",
+      "rounds": [
+        {
+          "candidates": [
+            {
+              "token": "mat",
+              "prob": 0.62
+            },
+            {
+              "token": "rug",
+              "prob": 0.18
+            },
+            {
+              "token": "sofa",
+              "prob": 0.09
+            },
+            {
+              "token": "floor",
+              "prob": 0.05
+            }
+          ]
+        }
+      ],
+      "captions": [
+        "It doesn't **know**,",
+        "it just predicts."
+      ]
+    }
+  ]
+}

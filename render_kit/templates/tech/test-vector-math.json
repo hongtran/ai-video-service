@@ -1,0 +1,9 @@
+{
+  "config": { "slug": "test-tech-vector-math", "topic": "tech vector-math test", "totalDuration": 6 },
+  "scenes": [{
+    "id": "s1", "type": "vector-math", "start": 0, "duration": 6,
+    "title": "The **analogy** that broke the internet",
+    "analogy": ["king", "man", "woman", "queen"],
+    "captions": ["Embeddings capture **meaning**", "as literal geometry."]
+  }]
+}

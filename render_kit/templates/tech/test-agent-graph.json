@@ -1,0 +1,14 @@
+{
+  "config": { "slug": "test-tech-agent-graph", "topic": "tech agent-graph test", "totalDuration": 7 },
+  "scenes": [{
+    "id": "s1", "type": "agent-graph", "start": 0, "duration": 7,
+    "title": "The agent's **control flow**",
+    "nodes": [
+      { "label": "Plan", "glyph": "🧭" }
+    ],
+    "router": "need a tool?",
+    "branches": ["call tool", "answer"],
+    "retryLabel": "loop back",
+    "captions": ["It doesn't just answer —", "it **decides** what's next."]
+  }]
+}

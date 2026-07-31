@@ -1,0 +1,9 @@
+{
+  "config": { "slug": "test-tech-tokenizer", "topic": "tech tokenizer test", "totalDuration": 6 },
+  "scenes": [{
+    "id": "s1", "type": "tokenizer", "start": 0, "duration": 6,
+    "title": "It's **not** words",
+    "tokens": ["token", "ization", " isn't", " magic"],
+    "captions": ["A model never sees words,", "it sees **token IDs**."]
+  }]
+}

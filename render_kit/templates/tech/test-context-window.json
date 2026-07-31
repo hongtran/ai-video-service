@@ -1,0 +1,11 @@
+{
+  "config": { "slug": "test-tech-context-window", "topic": "tech context-window test", "totalDuration": 6 },
+  "scenes": [{
+    "id": "s1", "type": "context-window", "start": 0, "duration": 6,
+    "title": "It **doesn't** remember",
+    "tokens": ["The", "cat", "sat", "on", "the", "mat", "because", "it's", "tired", "now"],
+    "limit": 6,
+    "limitLabel": "8K tokens",
+    "captions": ["Old context **falls out**", "as new tokens come in."]
+  }]
+}

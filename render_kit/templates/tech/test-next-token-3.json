@@ -1,0 +1,26 @@
+{
+  "config": { "slug": "test-tech-next-token-3", "topic": "tech next-token 3-round test", "totalDuration": 7 },
+  "scenes": [{
+    "id": "s1", "type": "next-token", "start": 0, "duration": 7,
+    "title": "One word at a **time**",
+    "sentence": "It's a beautiful ___",
+    "rounds": [
+      { "candidates": [
+        { "token": "day", "prob": 0.44 },
+        { "token": "morning", "prob": 0.21 },
+        { "token": "sunset", "prob": 0.11 }
+      ] },
+      { "candidates": [
+        { "token": "outside", "prob": 0.55 },
+        { "token": "today", "prob": 0.30 },
+        { "token": "here", "prob": 0.08 }
+      ] },
+      { "candidates": [
+        { "token": "isn't", "prob": 0.5 },
+        { "token": "it", "prob": 0.4 },
+        { "token": "friend", "prob": 0.05 }
+      ] }
+    ],
+    "captions": ["Three predictions,", "**one word** at a time."]
+  }]
+}

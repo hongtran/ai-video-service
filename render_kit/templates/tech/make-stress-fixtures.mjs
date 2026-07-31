@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Regenerates test-stress-v.json / test-stress-h.json — 21 scenes, one per
-// frame type, with content AT the layout limits documented in schema.json.
+// Regenerates test-stress-v.json / test-stress-h.json — 31 scenes, one per
+// frame type (photo/photo-split excepted — see render_kit/templates/tech/README.md),
+// with content AT the layout limits documented in schema.json.
 // These fixtures are the empirical proof behind every numeric limit: if a
 // limit is loosened in schema.json, push the content here to the new limit
 // and re-run populate + `npm run check` in both generated projects.
@@ -112,6 +113,43 @@ const scenes = [
   { id: 'st-mcp', type: 'mcp-hub', title: 'MCP hub title at limit!!', agentLabel: 'Your Agent', hubLabel: 'MCP', apps: [
     { glyph: '💬', label: 'Slack Pro!' }, { glyph: '📁', label: 'DriveSync!' }, { glyph: '💳', label: 'StripePay!' }, { glyph: '🗓️', label: 'Calendars!' }, { glyph: '📧', label: 'Email Hub!' },
   ] },
+  { id: 'st-tokenizer', type: 'tokenizer', title: 'Tokenizer title at cap!!', tokens: ['tokenize', 'ization!', '-really', '-truly', ' testing', '-limits!', '-here!!'] },
+  { id: 'st-next-token', type: 'next-token', title: 'Next-token title at cap!', sentence: 'The mysterious old house was ___', rounds: [
+    { candidates: [
+      { token: 'abandoned!', prob: 0.41 }, { token: 'desolate!!', prob: 0.29 }, { token: 'haunted...', prob: 0.18 }, { token: 'crumbling!', prob: 0.12 },
+    ] },
+    { candidates: [
+      { token: 'for years!', prob: 0.5 }, { token: 'since 1990', prob: 0.3 }, { token: 'no more...', prob: 0.2 },
+    ] },
+    { candidates: [
+      { token: 'according!', prob: 0.55 }, { token: 'apparently', prob: 0.35 }, { token: 'they say..', prob: 0.1 },
+    ] },
+  ] },
+  { id: 'st-context-window', type: 'context-window', title: 'Context window at cap!!', tokens: [
+    'The', 'quick', 'brown', 'fox!!', 'jumped', 'over!!', 'a lazy', 'sleepy', 'orange', 'striped', 'tabby', 'house', 'cat....', 'again!!',
+  ], limit: 8, limitLabel: '128K tokens!!' },
+  { id: 'st-embedding-vector', type: 'embedding-vector', title: 'Embedding title at cap!!', phrases: ['a stress test phrase!!'], values: [0.99, -0.98, 0.5, -0.5, 0.01, -0.01, 0.77, -0.77, 0.33, -0.33, 0.88, -0.88], dims: 12288 },
+  { id: 'st-similarity-score', type: 'similarity-score', title: 'Similarity title at cap', phrases: ['a fairly long first phrase', 'and an equally long second'], score: 0.99, threshold: 0.98 },
+  { id: 'st-chunking', type: 'chunking', title: 'Chunking title at the cap', filename: 'employee-handbook-2024-v3-final.pdf', items: [
+    'chunk one stretched to the char limit!!',
+    'chunk two also stretched to the limit!!',
+    'chunk three stretched to the char cap!!',
+    'chunk four stretched to the char limit!',
+  ] },
+  { id: 'st-knowledge-graph', type: 'knowledge-graph', title: 'Knowledge graph at the cap', nodes: [
+    { label: 'Acme Global!', glyph: '🏢' }, { label: 'Jane R. Doe', glyph: '🧑' }, { label: 'Berlin Office', glyph: '📍' },
+    { label: 'Core Eng Team', glyph: '👥' }, { label: 'Board of Dir', glyph: '🧑‍💼' }, { label: 'Investor Grp', glyph: '💰' },
+  ], edges: [
+    { from: 0, to: 1, label: 'founded_by!!' }, { from: 1, to: 3, label: 'works_at!!' }, { from: 0, to: 2, label: 'located_in!' },
+    { from: 2, to: 3, label: 'based_in!!' }, { from: 0, to: 4, label: 'governed_by' }, { from: 0, to: 5, label: 'funded_by!!' },
+  ], path: [0, 1, 3, 2] },
+  { id: 'st-agent-graph', type: 'agent-graph', title: 'Agent graph title at cap!', nodes: [
+    { label: 'Plan Steps!', glyph: '🧭' }, { label: 'Reason Hard', glyph: '🤔' },
+  ], router: 'need a tool now?', branches: ['call the tool', 'just answer!!'], retryLabel: 'loop back!!' },
+  { id: 'st-attention-arcs', type: 'attention-arcs', title: 'Attention arcs at the cap', tokens: [
+    'The', 'curious', 'striped', 'tabby', 'cat!!', 'sat!!', 'quietly', 'because', 'it\'d!!',
+  ], highlightIndex: 8, weights: [0.9, 0.75, 0.6, 0.85, 0.3, 0.2, 0.5, 0.4, 1.0] },
+  { id: 'st-vector-math', type: 'vector-math', title: 'Vector math title at cap!', analogy: ['emperor!!', 'monarch!!', 'empress!!', 'queen bee!'] },
   { id: 'st-cta', type: 'cta', headline: 'Forty-four characters of **headline** text!!', subheadline: 'A secondary line stretched right up to the sixty char cap..' },
 ];
 

@@ -1,0 +1,32 @@
+{
+  "config": {
+    "slug": "test-tech-attention-arcs-h",
+    "topic": "tech attention-arcs test",
+    "totalDuration": 6,
+    "orientation": "horizontal"
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "type": "attention-arcs",
+      "start": 0,
+      "duration": 6,
+      "title": "What's the model **looking at**?",
+      "tokens": [
+        "The",
+        "cat",
+        "sat",
+        "on",
+        "the",
+        "mat",
+        "because",
+        "it'd"
+      ],
+      "highlightIndex": 7,
+      "captions": [
+        "The model looks back",
+        "to find **what \"it\" means**."
+      ]
+    }
+  ]
+}

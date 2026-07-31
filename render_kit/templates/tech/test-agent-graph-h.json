@@ -1,0 +1,33 @@
+{
+  "config": {
+    "slug": "test-tech-agent-graph-h",
+    "topic": "tech agent-graph test",
+    "totalDuration": 7,
+    "orientation": "horizontal"
+  },
+  "scenes": [
+    {
+      "id": "s1",
+      "type": "agent-graph",
+      "start": 0,
+      "duration": 7,
+      "title": "The agent's **control flow**",
+      "nodes": [
+        {
+          "label": "Plan",
+          "glyph": "\ud83e\udded"
+        }
+      ],
+      "router": "need a tool?",
+      "branches": [
+        "call tool",
+        "answer"
+      ],
+      "retryLabel": "loop back",
+      "captions": [
+        "It doesn't just answer \u2014",
+        "it **decides** what's next."
+      ]
+    }
+  ]
+}
