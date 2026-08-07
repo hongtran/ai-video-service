@@ -103,7 +103,7 @@ class RealVideoPipeline:
 
             step = await self._step(job_id, PipelineStep.TTS)
             audio = await tts.synthesize(
-                self._client, self._settings, script, job.language
+                self._client, self._settings, script, job.language, job.subject
             )
             audio_path = self._artifacts.save_bytes(job_id, "narration.mp3", audio)
 

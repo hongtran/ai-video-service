@@ -153,12 +153,13 @@ async def synthesize(
     settings: Settings,
     script: str,
     language: str = DEFAULT_LANGUAGE,
+    subject: str = "tech",
 ) -> bytes:
     chunks = split_for_tts(script, settings.tts_max_chars)
     if not chunks:
         raise TTSError("nothing to synthesize: script is empty")
 
-    if language == ELEVENLABS_LANGUAGE and settings.environment == "prod":
+    if language == ELEVENLABS_LANGUAGE and settings.environment == "prod" and subject == "lab-management":
         async def _synth(text: str) -> bytes:
             return await _synthesize_chunk_elevenlabs(settings, text)
     else:

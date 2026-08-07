@@ -161,7 +161,7 @@ async def main() -> None:
         print(f"[segment] {len(scenes_index)} scene(s)")
 
         if should_run("tts", args.from_step):
-            audio = await tts.synthesize(client, settings, script, args.language)
+            audio = await tts.synthesize(client, settings, script, args.language, subject=args.subject)
             audio_path = artifacts.save_bytes(job_id, "narration.mp3", audio)
         else:
             audio_path = artifacts.path_for(job_id, "narration.mp3")
