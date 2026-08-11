@@ -70,8 +70,20 @@ class PlanFiltersTests(unittest.TestCase):
 
     def test_scale_and_fps_filters_always_appended(self) -> None:
         filters, _ = plan_filters(10.0, 15.0, self.settings)
-        self.assertEqual(filters[-2], "scale='min(1920,iw)':-2:flags=lanczos")
+        self.assertEqual(
+            filters[-2], "scale='2*trunc(min(1920,iw)/2)':-2:flags=lanczos"
+        )
         self.assertEqual(filters[-1], "fps=30")
+
+    def test_scale_filter_rounds_width_down_to_even(self) -> None:
+        # `-2` only forces the HEIGHT even. A source narrower than the cap
+        # passes its own width through untouched, so an odd-width recording
+        # (e.g. 1493px) reached libx264 as-is and killed the encoder with
+        # "width not divisible by 2". The width expression must round down.
+        filters, _ = plan_filters(10.0, 15.0, self.settings)
+        scale = next(f for f in filters if f.startswith("scale="))
+        self.assertIn("2*trunc(", scale)
+        self.assertNotEqual(scale, "scale='min(1920,iw)':-2:flags=lanczos")
 
 
 class BuildArgsTests(unittest.TestCase):
@@ -157,6 +169,35 @@ class BuildScreencastIntegrationTests(unittest.IsolatedAsyncioTestCase):
             self.assertAlmostEqual(duration, 6.0, delta=0.5)
         finally:
             os.chdir(cwd)
+
+    async def test_odd_width_gif_encodes_instead_of_killing_libx264(self) -> None:
+        # Regression test for the production failure: a 1493x812 screen
+        # recording is NARROWER than screencast_max_width, so the width
+        # expression clamped to its own odd 1493 and libx264 refused to open
+        # ("width not divisible by 2"), failing the whole job. Odd height too,
+        # so both axes are covered by one case.
+        odd_gif = self.tmpdir / "odd.gif"
+        subprocess.run(
+            ["ffmpeg", "-y", "-f", "lavfi",
+             "-i", "testsrc=size=1493x811:rate=10:duration=2", str(odd_gif)],
+            check=True, capture_output=True,
+        )
+        out_path = self.tmpdir / "odd.mp4"
+
+        duration = await build_screencast(
+            self.settings, [odd_gif], out_path,
+            [{"id": "s1", "start": 0.0, "duration": 3.0}],
+        )
+
+        self.assertAlmostEqual(duration, 3.0, delta=0.5)
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "stream=width,height",
+             "-of", "csv=p=0", str(out_path)],
+            check=True, capture_output=True, text=True,
+        )
+        width, height = (int(v) for v in probe.stdout.strip().split(","))
+        self.assertEqual(width % 2, 0, f"odd output width {width}")
+        self.assertEqual(height % 2, 0, f"odd output height {height}")
 
     async def test_missing_gif_raises_clear_error(self) -> None:
         with self.assertRaises(ScreencastError):
