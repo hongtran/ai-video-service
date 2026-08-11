@@ -83,9 +83,13 @@ def plan_filters(
         filters.append("setpts=PTS-STARTPTS")
 
     # Cap the width (screen recordings are often 2560px+ retina captures) and
-    # force even dimensions — yuv420p H.264 requires them.
+    # force even dimensions — yuv420p H.264 subsamples chroma 2x2 and libx264
+    # refuses to open the encoder on an odd axis. `-2` covers the height only,
+    # so the width expression has to round itself down: a recording narrower
+    # than the cap keeps its own width, and an odd one (e.g. 1493px) would
+    # otherwise reach the encoder untouched and fail the whole job.
     filters.append(
-        f"scale='min({settings.screencast_max_width},iw)':-2:flags=lanczos"
+        f"scale='2*trunc(min({settings.screencast_max_width},iw)/2)':-2:flags=lanczos"
     )
     filters.append(f"fps={settings.screencast_fps}")
     return filters, factor
